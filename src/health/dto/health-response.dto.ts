@@ -20,3 +20,13 @@ export class HealthResponseDto {
   @ApiProperty({ example: 12, description: 'Process uptime in whole seconds' })
   uptimeSeconds!: number;
 }
+
+export class ReadyChecksDto {
+  @ApiProperty({ example: 'up', enum: ['up', 'down'] })
+  database!: 'up' | 'down';
+}
+
+export class ReadyResponseDto extends HealthResponseDto {
+  @ApiProperty({ type: ReadyChecksDto })
+  checks!: ReadyChecksDto;
+}
