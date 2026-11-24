@@ -63,7 +63,7 @@ describe('Platform (e2e)', () => {
       });
   });
 
-  it('GET /api/docs-json exposes the OpenAPI document', () => {
+  it('GET /api/docs-json returns the OpenAPI document', () => {
     return request(app.getHttpServer())
       .get('/api/docs-json')
       .expect(200)

@@ -6,10 +6,6 @@ import { requestLoggingMiddleware } from './common/middleware/request-logging.mi
 import { createValidationPipe } from './common/pipes/validation.pipe';
 import { AppConfigService } from './config/app-config.service';
 
-/**
- * Shared HTTP surface for production and e2e: correlation, access logs,
- * validation, error contract, and OpenAPI.
- */
 export function configureApp(app: INestApplication): void {
   const appConfig = app.get(AppConfigService);
 
