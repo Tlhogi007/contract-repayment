@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, Max, Min } from 'class-validator';
+import { IsDateString, IsInt, Max, Min } from 'class-validator';
 import { MAX_PRINCIPAL_CENTS } from '../../pricing/money';
 
 export class UpdateContractDto {
@@ -12,4 +12,12 @@ export class UpdateContractDto {
   @Min(1)
   @Max(MAX_PRINCIPAL_CENTS)
   principalCents!: number;
+
+  @ApiProperty({
+    example: '2026-01-02T00:00:00.000Z',
+    description:
+      'updatedAt from the last read; stale values reject with 409 Conflict',
+  })
+  @IsDateString()
+  expectedUpdatedAt!: string;
 }
