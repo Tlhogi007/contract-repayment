@@ -4,7 +4,7 @@ NestJS microservice for **device contract repayment calculations**.
 
 **Demo journey:** register / login → submit a principal in **integer cents** → receive comparable **12 / 24 / 36-month** offerings at **6.5%** → manage your own contracts (JWT).
 
-**Status:** Complete and released on [`main`](https://github.com/Tlhogi007/contract-repayment-api) as **v1.2.0**. Clone, run, and exercise Swagger without extra setup beyond Node 22+.
+**Status:** Complete and released on [`main`](https://github.com/Tlhogi007/contract-repayment-api) as **v1.3.0**. Clone, run, and exercise Swagger without extra setup beyond Node 22+.
 
 ---
 
@@ -232,7 +232,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for workflow details.
 6. Hardening — expired JWT, IDOR, ceiling, cascade, race smoke
 7. Milestone release — **v1.1.0** on `main`
 8. Scale posture — list pagination + rate limits → **v1.2.0**
-9. Optimistic concurrency — `expectedUpdatedAt` on `PATCH` → `409`
+9. Optimistic concurrency — `expectedUpdatedAt` on `PATCH` → `409` → **v1.3.0**
 10. Remaining stretch (optional) — thin UI, Redis throttle store
 
 ---
