@@ -8,7 +8,7 @@ Built as a **bounded service under delivery discipline**: clear ownership bounda
 
 ## Current status
 
-**Identity** — `POST /auth/register` and `POST /auth/login` issue JWTs; passwords are bcrypt-hashed; Prisma/SQLite persists users. Platform foundation (config, validation, OpenAPI, errors, logging, liveness) remains in place. Pricing and contracts CRUD are next.
+**Pricing** — `RepaymentPolicy` (Nest DI + Strategy) quotes 12 / 24 / 36-month amortized options at 6.5% in integer cents, with golden unit tests. Identity includes register/login plus `GET /auth/me` (JWT-guarded). Contracts CRUD is next.
 
 Delivery standards (hooks, CI, protected `main`/`develop`, semantic-release) are enforced.
 
@@ -16,14 +16,14 @@ Delivery standards (hooks, CI, protected `main`/`develop`, semantic-release) are
 
 These are the calls this slice makes on purpose — the kind of trade-offs a tech lead is expected to own:
 
-| Decision            | Choice                                  | Why                                                                                                        |
-| ------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Validation coercion | Off by default                          | Money and identity payloads must fail closed; DTOs opt in with `@Type` only when conversion is intentional |
-| Error contract      | One `ApiErrorResponse` shape            | Clients and logs share the same fields; unexpected exceptions never leak internals                         |
-| Request correlation | `x-request-id` + access log on `finish` | Every response, including Nest’s own 404s, can be traced without logging bodies                            |
-| Health              | Liveness only                           | Reports process facts; does not pretend DB/auth readiness before those dependencies exist                  |
-| Boot wiring         | Shared `configureApp()`                 | Production and e2e exercise the same pipes, filters, and docs surface                                      |
-| Scope               | Platform before domain                  | Auth and pricing sit on a stable base so later PRs stay reviewable and auditable                           |
+| Decision            | Choice                                  | Why                                                                                                                  |
+| ------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Validation coercion | Off by default                          | Money and identity payloads must fail closed; DTOs opt in with `@Type` only when conversion is intentional           |
+| Error contract      | One `ApiErrorResponse` shape            | Clients and logs share the same fields; unexpected exceptions never leak internals                                   |
+| Request correlation | `x-request-id` + access log on `finish` | Every response, including Nest’s own 404s, can be traced without logging bodies                                      |
+| Health              | Liveness only                           | Reports process facts; does not pretend DB/auth readiness before those dependencies exist                            |
+| Boot wiring         | Shared `configureApp()`                 | Production and e2e share pipes, filters, middleware, and OpenAPI; keeps the HTTP surface outside module DI by design |
+| Scope               | Platform before domain                  | Auth and pricing sit on a stable base so later PRs stay reviewable and auditable                                     |
 
 ## Identity decisions
 
@@ -75,17 +75,42 @@ Unit tests enforce **≥ 90%** coverage (statements, branches, functions, lines)
 | Unit + e2e per feature PR                     |                                       |
 | Clone → run docs for reviewers                |                                       |
 
-## Architecture (target)
+## Architecture
+
+Nest’s layered alternative to MVC — same separation of concerns, different names:
 
 ```
 HTTP / OpenAPI
   → Controllers (transport)
   → Application services (use-cases + authz)
-  → Domain: RepaymentPolicy (pure, deterministic)
+  → Domain: RepaymentPolicy (deterministic quotes)
   → Prisma persistence (SQLite for local demo; schema Postgres-portable)
 ```
 
-## Interest policy (planned)
+Cross-cutting concerns stay outside feature modules: `configureApp()` wires validation, exception filter, request-id, access logging, and Swagger for both production and e2e.
+
+### Design patterns
+
+| Pattern                   | Where                                                                                   | Why                                                                |
+| ------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Strategy                  | `AmortizationCalculator` + `NativeAmortizationCalculator` via `AMORTIZATION_CALCULATOR` | Swap the formula engine without changing the cents quote API       |
+| Dependency injection      | Nest providers (`RepaymentPolicy`, `AuthService`, …)                                    | Callers depend on contracts; tests and overrides stay cheap        |
+| Factory                   | `JwtModule.registerAsync({ useFactory })`, `createValidationPipe()`                     | Build configured collaborators once at boot                        |
+| Guard + Passport strategy | `JwtAuthGuard` + `JwtStrategy`                                                          | Protect routes; load the current user from a verified JWT          |
+| Decorator                 | Nest metadata + `@CurrentUser()`                                                        | Keep transport glue out of services                                |
+| Middleware / filter       | request-id + access log; `AllExceptionsFilter`                                          | Correlate requests; one `ApiErrorResponse` shape for every failure |
+
+### SOLID in this codebase
+
+| Principle             | How it shows up                                                                                |
+| --------------------- | ---------------------------------------------------------------------------------------------- |
+| Single responsibility | Controllers transport; services own use-cases; calculator owns math; Prisma owns persistence   |
+| Open/closed           | New amortization engine plugs in behind the token; callers of `RepaymentPolicy` stay untouched |
+| Liskov substitution   | Any `AmortizationCalculator` implementation is interchangeable at the DI boundary              |
+| Interface segregation | Calculator interface is one method — no fat “pricing” port                                     |
+| Dependency inversion  | `RepaymentPolicy` depends on the calculator abstraction, not `NativeAmortizationCalculator`    |
+
+## Interest policy
 
 Amortized (reducing-balance) monthly payment:
 
@@ -93,11 +118,25 @@ Amortized (reducing-balance) monthly payment:
 M = P \frac{r(1+r)^{n}}{(1+r)^{n}-1}
 \]
 
-- \(P\) — principal (device amount)
+- \(P\) — principal in **integer cents**
 - \(r\) — \(0.065 / 12\)
 - \(n\) — 12 \| 24 \| 36
+- \(M\) — monthly payment, rounded to the nearest cent (`Math.round`)
 
-Money is handled in **integer cents** at the domain boundary. Option snapshots are persisted on write so historical quotes stay stable if policy evolves.
+`RepaymentPolicy` is a Nest-injectable domain service (no HTTP of its own). Formula math sits behind `AmortizationCalculator` so the engine can be swapped. Contracts will snapshot quoted options on write so historical quotes stay stable if policy evolves.
+
+## Pricing decisions
+
+| Decision        | Choice                                         | Why                                                                                                                                           |
+| --------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Interest        | Amortized reducing-balance @ 6.5% annual       | Matches the assessment offerings; deterministic and easy to golden-test                                                                       |
+| Money unit      | Integer cents at the domain boundary           | Avoids float drift in stored totals; display formatting stays out of the domain                                                               |
+| Rounding        | `Math.round` on the monthly payment            | Single, explicit rule; totals are `monthly × term` from that rounded payment                                                                  |
+| Decimal library | Not used (`decimal.js` / Dinero / etc.)        | Fixed rate + three terms; cents + one round + golden tests are enough for now                                                                 |
+| Formula engine  | Strategy + Nest DI (`AMORTIZATION_CALCULATOR`) | `RepaymentPolicy` owns the cents API; the token binds the formula. Override the provider to plug in a decimal engine without touching callers |
+| Formula float   | Inside `NativeAmortizationCalculator` only     | Accepted trade-off today; a decimal calculator plugs in behind the same interface                                                             |
+| Delivery        | Pricing module before contracts HTTP           | Pricing correctness is proven in isolation; CRUD stays a thin owner of persistence + authz                                                    |
+| HTTP amounts    | Contracts must accept cents (or parse once)    | Never trust JSON number floats as money at the API boundary                                                                                   |
 
 ## Prerequisites
 
@@ -130,6 +169,7 @@ npm run validate
 | -------- | ---------------- | ---- | ------- | ------------------------------ |
 | `POST`   | `/auth/register` | —    | Live    | Create account                 |
 | `POST`   | `/auth/login`    | —    | Live    | Issue JWT                      |
+| `GET`    | `/auth/me`       | JWT  | Live    | Current user (guard proof)     |
 | `POST`   | `/contracts`     | JWT  | Planned | Create contract + term options |
 | `GET`    | `/contracts`     | JWT  | Planned | List own contracts             |
 | `GET`    | `/contracts/:id` | JWT  | Planned | Get one (ownership enforced)   |
@@ -142,8 +182,8 @@ npm run validate
 
 1. **Engineering template** — hooks, CI, branches, docs
 2. **Platform** — config, validation, Swagger, errors, logging
-3. **Identity** — register/login, bcrypt, JWT guard _(this)_
-4. **Pricing** — pure `RepaymentPolicy` + golden unit tests
+3. **Identity** — register/login, bcrypt, JWT guard
+4. **Pricing** — `RepaymentPolicy` + Strategy DI + golden unit tests _(this)_
 5. **Contracts** — CRUD + ownership + option snapshots
 6. **Hardening** — negative paths, IDOR checks
 7. **Narrative** — README as design/runbook for assessors

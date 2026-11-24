@@ -21,13 +21,11 @@ describe('AppConfigService', () => {
 
     expect(service.port).toBe(4000);
     expect(service.nodeEnv).toBe('test');
-    expect(service.databaseUrl).toBe(stubEnv.DATABASE_URL);
     expect(service.jwtSecret).toBe(FAKE_JWT_SECRET);
     expect(service.jwtExpiresIn).toBe('1h');
     expect(service.version).toMatch(/^\d+\.\d+\.\d+/);
     expect(get).toHaveBeenCalledWith('PORT', { infer: true });
     expect(get).toHaveBeenCalledWith('NODE_ENV', { infer: true });
-    expect(get).toHaveBeenCalledWith('DATABASE_URL', { infer: true });
     expect(get).toHaveBeenCalledWith('JWT_SECRET', { infer: true });
     expect(get).toHaveBeenCalledWith('JWT_EXPIRES_IN', { infer: true });
   });

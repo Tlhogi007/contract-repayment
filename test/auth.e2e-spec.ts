@@ -101,6 +101,49 @@ describe('Auth (e2e)', () => {
     expect(body.statusCode).toBe(400);
   });
 
+  it('GET /auth/me requires a Bearer token', async () => {
+    const res = await request(app.getHttpServer()).get('/auth/me').expect(401);
+
+    const body = res.body as ApiErrorResponse;
+    expect(body.statusCode).toBe(401);
+  });
+
+  it('GET /auth/me returns the authenticated user', async () => {
+    const registerRes = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({ email: 'me@example.com', password: 'password123' })
+      .expect(201);
+
+    const { accessToken } = registerRes.body as AuthResponseDto;
+
+    const res = await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+
+    const body = res.body as { id: string; email: string };
+    expect(typeof body.id).toBe('string');
+    expect(body.email).toBe('me@example.com');
+  });
+
+  it('GET /auth/me rejects a token whose user was deleted', async () => {
+    const registerRes = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({ email: 'gone@example.com', password: 'password123' })
+      .expect(201);
+
+    const { accessToken, user } = registerRes.body as AuthResponseDto;
+    await prisma.user.delete({ where: { id: user.id } });
+
+    const res = await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(401);
+
+    const body = res.body as ApiErrorResponse;
+    expect(body.statusCode).toBe(401);
+  });
+
   it('OpenAPI documents auth routes', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/docs-json')
@@ -109,5 +152,6 @@ describe('Auth (e2e)', () => {
     const body = res.body as { paths: Record<string, unknown> };
     expect(body.paths).toHaveProperty('/auth/register');
     expect(body.paths).toHaveProperty('/auth/login');
+    expect(body.paths).toHaveProperty('/auth/me');
   });
 });

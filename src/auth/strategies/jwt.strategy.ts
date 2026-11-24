@@ -7,15 +7,15 @@ import type { AuthenticatedUser, JwtPayload } from '../auth.types';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  private readonly prisma: PrismaService;
-
-  constructor(appConfig: AppConfigService, prisma: PrismaService) {
+  constructor(
+    appConfig: AppConfigService,
+    private readonly prisma: PrismaService,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: appConfig.jwtSecret,
     });
-    this.prisma = prisma;
   }
 
   async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
