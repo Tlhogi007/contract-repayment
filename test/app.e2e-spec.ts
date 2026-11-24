@@ -9,11 +9,14 @@ import {
   API_SERVICE_NAME,
   HealthResponseDto,
 } from './../src/health/dto/health-response.dto';
+import { startTestTelemetry } from './start-test-telemetry';
 
 describe('Platform (e2e)', () => {
   let app: INestApplication<App>;
 
   beforeEach(async () => {
+    startTestTelemetry();
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -44,6 +47,31 @@ describe('Platform (e2e)', () => {
       });
   });
 
+  it('GET /health/ready checks the database', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/health/ready')
+      .expect(200);
+
+    expect(res.body).toEqual(
+      expect.objectContaining({
+        status: 'ok',
+        service: API_SERVICE_NAME,
+        checks: { database: 'up' },
+      }),
+    );
+  });
+
+  it('GET /metrics exposes Prometheus text', async () => {
+    await request(app.getHttpServer()).get('/missing').expect(404);
+
+    const res = await request(app.getHttpServer())
+      .get('/metrics')
+      .expect(200)
+      .expect('content-type', /text\/plain/);
+
+    expect(res.text).toContain('http_server_requests_total');
+  });
+
   it('echoes a safe client request id', () => {
     return request(app.getHttpServer())
       .get('/health')
@@ -69,11 +97,21 @@ describe('Platform (e2e)', () => {
       .expect(200)
       .expect((res) => {
         const body = res.body as {
-          info: { title: string };
+          info: { title: string; description: string };
           paths: Record<string, unknown>;
+          tags: Array<{ name: string }>;
         };
         expect(body.info.title).toBe('Contract Repayment API');
+        expect(body.info.description).toContain('integer cents');
+        expect(body.info.description).toContain('/metrics');
+        expect(body.info.description).toContain('OTEL_EXPORTER_OTLP_ENDPOINT');
+        expect(body.info.description).toContain('SENTRY_DSN');
         expect(body.paths).toHaveProperty('/health');
+        expect(body.paths).toHaveProperty('/health/ready');
+        expect(body.paths).toHaveProperty('/metrics');
+        expect(body.tags.map((tag) => tag.name)).toEqual(
+          expect.arrayContaining(['health', 'observability']),
+        );
       });
   });
 
