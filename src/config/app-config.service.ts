@@ -33,4 +33,16 @@ export class AppConfigService {
   get jwtExpiresIn(): string {
     return this.config.get('JWT_EXPIRES_IN', { infer: true });
   }
+
+  get otelServiceName(): string {
+    return this.config.get('OTEL_SERVICE_NAME', { infer: true });
+  }
+
+  get otlpEndpoint(): string | undefined {
+    return this.config.get('OTEL_EXPORTER_OTLP_ENDPOINT', { infer: true });
+  }
+
+  get sentryDsn(): string | undefined {
+    return this.config.get('SENTRY_DSN', { infer: true });
+  }
 }

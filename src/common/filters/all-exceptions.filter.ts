@@ -4,14 +4,25 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
+  Inject,
+  Injectable,
   Logger,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import {
+  ERROR_REPORTER,
+  type ErrorReporter,
+} from '../../observability/error-reporter';
 import { ApiErrorResponse } from '../http/api-error-response';
 
 @Catch()
+@Injectable()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
+
+  constructor(
+    @Inject(ERROR_REPORTER) private readonly errorReporter: ErrorReporter,
+  ) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const http = host.switchToHttp();
@@ -31,6 +42,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
         `Unhandled exception ${request.method} ${body.path} requestId=${body.requestId ?? '-'}`,
         stack,
       );
+      this.errorReporter.captureException(exception, {
+        path: body.path,
+        method: request.method,
+        requestId: body.requestId,
+        statusCode,
+      });
     }
 
     response.status(statusCode).json(body);

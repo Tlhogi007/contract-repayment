@@ -12,6 +12,7 @@ describe('AppConfigService', () => {
       DATABASE_URL: 'file:./test.db',
       JWT_SECRET: FAKE_JWT_SECRET,
       JWT_EXPIRES_IN: '1h',
+      OTEL_SERVICE_NAME: 'contract-repayment-api',
     };
 
     const get = jest.fn((key: keyof AppEnv) => stubEnv[key]);
@@ -23,6 +24,9 @@ describe('AppConfigService', () => {
     expect(service.nodeEnv).toBe('test');
     expect(service.jwtSecret).toBe(FAKE_JWT_SECRET);
     expect(service.jwtExpiresIn).toBe('1h');
+    expect(service.otelServiceName).toBe('contract-repayment-api');
+    expect(service.otlpEndpoint).toBeUndefined();
+    expect(service.sentryDsn).toBeUndefined();
     expect(service.version).toMatch(/^\d+\.\d+\.\d+/);
     expect(get).toHaveBeenCalledWith('PORT', { infer: true });
     expect(get).toHaveBeenCalledWith('NODE_ENV', { infer: true });
