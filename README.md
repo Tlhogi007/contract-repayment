@@ -50,6 +50,8 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for workflow, commit rules, and PR expe
 npm run validate   # typecheck + lint + format + unit/e2e + build
 ```
 
+Unit tests enforce **≥ 90%** coverage (statements, branches, functions, lines). Nest bootstrap/module wiring is excluded from that unit gate and covered by e2e.
+
 ## Goals
 
 | In scope                                      | Out of scope (v1)                     |

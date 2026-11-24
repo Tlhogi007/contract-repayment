@@ -1,3 +1,4 @@
+import * as classValidator from 'class-validator';
 import { validateEnv } from './env.validation';
 
 describe('validateEnv', () => {
@@ -34,5 +35,20 @@ describe('validateEnv', () => {
 
   it('rejects an unknown NODE_ENV', () => {
     expect(() => validateEnv({ NODE_ENV: 'staging' })).toThrow(/NODE_ENV/);
+  });
+
+  it('still fails when a validation error has no constraints map', () => {
+    jest.spyOn(classValidator, 'validateSync').mockReturnValueOnce([
+      {
+        property: 'PORT',
+        constraints: undefined,
+      },
+    ] as classValidator.ValidationError[]);
+
+    expect(() => validateEnv({ PORT: 3000 })).toThrow(
+      /Invalid environment configuration/,
+    );
+
+    jest.restoreAllMocks();
   });
 });
