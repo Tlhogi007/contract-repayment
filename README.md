@@ -25,6 +25,16 @@ These are the calls this slice makes on purpose — the kind of trade-offs a tec
 | Boot wiring         | Shared `configureApp()`                 | Production and e2e exercise the same pipes, filters, and docs surface                                      |
 | Scope               | Platform before domain                  | Auth and pricing sit on a stable base so later PRs stay reviewable and auditable                           |
 
+## Identity decisions
+
+| Decision         | Choice                                         | Why                                                                                          |
+| ---------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Login path       | `AuthService` (not passport-local)             | Credential check is one use-case; Passport is reserved for JWT on protected routes           |
+| Failed login     | Same `401` / `Invalid credentials` always      | Avoids leaking whether an email is registered                                                |
+| Tokens           | Access JWT only (no refresh / sessions)        | Enough for a Bearer API demo; refresh adds surface area without changing the assessment path |
+| Password storage | bcrypt (cost 10); never returned in responses  | Standard one-way hash; hash stays off the wire                                               |
+| Persistence      | Prisma + SQLite locally; schema Postgres-ready | Fast clone → run for assessors; swap the URL later without rewriting the domain              |
+
 ## Branch model
 
 | Branch    | Role                                             |
