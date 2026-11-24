@@ -21,11 +21,14 @@ Never commit directly to `main` or `develop` in day-to-day work. Open a PR.
 ## Local setup
 
 ```bash
-nvm use          # Node 22 from .nvmrc
+# Use Node 22+ (any install method: official installer, Homebrew, nvm, etc.)
+node -v
 npm install      # installs deps + husky hooks via prepare
 cp .env.example .env
 npm run start:dev
 ```
+
+If you use a Node version manager, `.nvmrc` pins `22` for convenience. It is not required.
 
 ## Quality gates
 

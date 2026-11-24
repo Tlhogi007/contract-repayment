@@ -38,7 +38,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for workflow, commit rules, and PR expe
 
 | Concern       | Tool                                            |
 | ------------- | ----------------------------------------------- |
-| Framework     | NestJS + TypeScript (Node 22, `.nvmrc`)         |
+| Framework     | NestJS + TypeScript (Node 22+)                  |
 | Lint / format | ESLint + Prettier                               |
 | Git hooks     | Husky (`pre-commit`, `commit-msg`, `pre-push`)  |
 | Staged checks | lint-staged                                     |
@@ -87,7 +87,7 @@ Money is handled in **integer cents** at the domain boundary. Option snapshots a
 
 ## Prerequisites
 
-- Node.js **22+** (`.nvmrc`)
+- Node.js **22+**
 - npm 10+
 
 ## Quick start
