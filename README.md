@@ -75,15 +75,40 @@ Unit tests enforce **≥ 90%** coverage (statements, branches, functions, lines)
 | Unit + e2e per feature PR                     |                                       |
 | Clone → run docs for reviewers                |                                       |
 
-## Architecture (target)
+## Architecture
+
+Nest’s layered alternative to MVC — same separation of concerns, different names:
 
 ```
 HTTP / OpenAPI
   → Controllers (transport)
   → Application services (use-cases + authz)
-  → Domain: RepaymentPolicy (pure, deterministic)
+  → Domain: RepaymentPolicy (deterministic quotes)
   → Prisma persistence (SQLite for local demo; schema Postgres-portable)
 ```
+
+Cross-cutting concerns stay outside feature modules: `configureApp()` wires validation, exception filter, request-id, access logging, and Swagger for both production and e2e.
+
+### Design patterns
+
+| Pattern                   | Where                                                                                   | Why                                                                |
+| ------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Strategy                  | `AmortizationCalculator` + `NativeAmortizationCalculator` via `AMORTIZATION_CALCULATOR` | Swap the formula engine without changing the cents quote API       |
+| Dependency injection      | Nest providers (`RepaymentPolicy`, `AuthService`, …)                                    | Callers depend on contracts; tests and overrides stay cheap        |
+| Factory                   | `JwtModule.registerAsync({ useFactory })`, `createValidationPipe()`                     | Build configured collaborators once at boot                        |
+| Guard + Passport strategy | `JwtAuthGuard` + `JwtStrategy`                                                          | Protect routes; load the current user from a verified JWT          |
+| Decorator                 | Nest metadata + `@CurrentUser()`                                                        | Keep transport glue out of services                                |
+| Middleware / filter       | request-id + access log; `AllExceptionsFilter`                                          | Correlate requests; one `ApiErrorResponse` shape for every failure |
+
+### SOLID in this codebase
+
+| Principle             | How it shows up                                                                                |
+| --------------------- | ---------------------------------------------------------------------------------------------- |
+| Single responsibility | Controllers transport; services own use-cases; calculator owns math; Prisma owns persistence   |
+| Open/closed           | New amortization engine plugs in behind the token; callers of `RepaymentPolicy` stay untouched |
+| Liskov substitution   | Any `AmortizationCalculator` implementation is interchangeable at the DI boundary              |
+| Interface segregation | Calculator interface is one method — no fat “pricing” port                                     |
+| Dependency inversion  | `RepaymentPolicy` depends on the calculator abstraction, not `NativeAmortizationCalculator`    |
 
 ## Interest policy
 
