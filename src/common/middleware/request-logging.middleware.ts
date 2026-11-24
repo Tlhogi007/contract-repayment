@@ -14,10 +14,6 @@ export function formatAccessLog(
   return `${method} ${path} ${statusCode} ${durationMs}ms requestId=${requestId}`;
 }
 
-/**
- * Access log on response finish so Nest-generated 404s still correlate
- * with `x-request-id`. Bodies are never logged.
- */
 export function requestLoggingMiddleware(
   request: Request,
   response: Response,
