@@ -111,4 +111,66 @@ describe('AllExceptionsFilter', () => {
 
     expect(status).toHaveBeenCalledWith(HttpStatus.NOT_FOUND);
   });
+
+  it('uses url when originalUrl is absent and keeps empty object payloads safe', () => {
+    const { host, status, json } = createHost({
+      method: 'GET',
+      url: '/fallback-path',
+    });
+
+    filter.catch(new HttpException({}, HttpStatus.BAD_GATEWAY), host);
+
+    expect(status).toHaveBeenCalledWith(HttpStatus.BAD_GATEWAY);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: 502,
+        path: '/fallback-path',
+        message: 'Internal server error',
+        error: 'Internal Server Error',
+      }),
+    );
+    expect(errorLog).toHaveBeenCalled();
+  });
+
+  it('logs non-Error throws without a stack', () => {
+    const { host, status, json } = createHost({
+      method: 'GET',
+      originalUrl: '/health',
+      url: '/health',
+    });
+
+    filter.catch('boom', host);
+
+    expect(status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Internal server error',
+      }),
+    );
+    expect(errorLog).toHaveBeenCalledWith(
+      expect.stringContaining('Unhandled exception GET /health'),
+      undefined,
+    );
+  });
+
+  it('ignores null HttpException bodies', () => {
+    const { host, status, json } = createHost({
+      method: 'POST',
+      originalUrl: '/contracts',
+      url: '/contracts',
+    });
+
+    filter.catch(
+      new HttpException(null as unknown as string, HttpStatus.BAD_REQUEST),
+      host,
+    );
+
+    expect(status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: 400,
+        message: 'Internal server error',
+      }),
+    );
+  });
 });
