@@ -1,8 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { AmortizationCalculator } from './amortization-calculator';
 import { AMORTIZATION_CALCULATOR } from './amortization-calculator.token';
+import { MAX_PRINCIPAL_CENTS } from './money';
 import { TERM_MONTHS, type TermMonths } from './terms';
 
+export { MAX_PRINCIPAL_CENTS } from './money';
 export { TERM_MONTHS, type TermMonths } from './terms';
 export type { AmortizationCalculator } from './amortization-calculator';
 export { AMORTIZATION_CALCULATOR } from './amortization-calculator.token';
@@ -60,6 +62,9 @@ export class RepaymentPolicy {
   private assertPrincipalCents(principalCents: number): void {
     if (!Number.isInteger(principalCents) || principalCents <= 0) {
       throw new RangeError('principalCents must be a positive integer (cents)');
+    }
+    if (principalCents > MAX_PRINCIPAL_CENTS) {
+      throw new RangeError(`principalCents must be <= ${MAX_PRINCIPAL_CENTS}`);
     }
   }
 }

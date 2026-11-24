@@ -1,6 +1,10 @@
 import type { AmortizationCalculator } from './amortization-calculator';
 import { NativeAmortizationCalculator } from './native-amortization-calculator';
-import { RepaymentPolicy, TERM_MONTHS } from './repayment-policy';
+import {
+  MAX_PRINCIPAL_CENTS,
+  RepaymentPolicy,
+  TERM_MONTHS,
+} from './repayment-policy';
 
 describe('RepaymentPolicy', () => {
   const policy = new RepaymentPolicy(new NativeAmortizationCalculator());
@@ -68,6 +72,21 @@ describe('RepaymentPolicy', () => {
     expect(() => policy.quote(-100)).toThrow(RangeError);
     expect(() => policy.quote(10.5)).toThrow(RangeError);
     expect(() => policy.monthlyPaymentCents(0, 12)).toThrow(RangeError);
+  });
+
+  it('rejects principals above the Int-safe money ceiling', () => {
+    expect(() => policy.quote(MAX_PRINCIPAL_CENTS + 1)).toThrow(RangeError);
+  });
+
+  it('quotes at the maximum allowed principal without overflowing Int totals', () => {
+    const options = policy.quote(MAX_PRINCIPAL_CENTS);
+    const intMax = 2_147_483_647;
+
+    for (const option of options) {
+      expect(Number.isInteger(option.monthlyPaymentCents)).toBe(true);
+      expect(option.totalPayableCents).toBeLessThanOrEqual(intMax);
+      expect(option.totalInterestCents).toBeLessThanOrEqual(intMax);
+    }
   });
 
   it('delegates formula math to the injected calculator (Strategy)', () => {

@@ -1,4 +1,5 @@
 import { INestApplication } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -142,6 +143,51 @@ describe('Auth (e2e)', () => {
 
     const body = res.body as ApiErrorResponse;
     expect(body.statusCode).toBe(401);
+  });
+
+  it('GET /auth/me rejects an expired JWT', async () => {
+    const registerRes = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({ email: 'expired@example.com', password: 'password123' })
+      .expect(201);
+
+    const { user } = registerRes.body as AuthResponseDto;
+    const jwtService = app.get(JwtService);
+    const expiredToken = jwtService.sign(
+      { sub: user.id, email: user.email },
+      { expiresIn: -30 },
+    );
+
+    const res = await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Authorization', `Bearer ${expiredToken}`)
+      .expect(401);
+
+    expect((res.body as ApiErrorResponse).statusCode).toBe(401);
+  });
+
+  it('rejects malformed Authorization schemes', async () => {
+    const registerRes = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({ email: 'scheme@example.com', password: 'password123' })
+      .expect(201);
+
+    const { accessToken } = registerRes.body as AuthResponseDto;
+
+    await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Authorization', `Token ${accessToken}`)
+      .expect(401);
+
+    await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Authorization', 'Bearer')
+      .expect(401);
+
+    await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Authorization', 'Bearer ')
+      .expect(401);
   });
 
   it('OpenAPI documents auth routes', async () => {

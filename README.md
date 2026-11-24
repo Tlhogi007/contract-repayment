@@ -8,7 +8,7 @@ Built as a **bounded service under delivery discipline**: clear ownership bounda
 
 ## Current status
 
-**Pricing** — `RepaymentPolicy` (Nest DI + Strategy) quotes 12 / 24 / 36-month amortized options at 6.5% in integer cents, with golden unit tests. Identity includes register/login plus `GET /auth/me` (JWT-guarded). Contracts CRUD is next.
+**Contracts** — JWT-guarded CRUD with owner-scoped access (cross-user → 404) and frozen 12/24/36 option snapshots from `RepaymentPolicy`. Identity and pricing are in place. The assessor demo journey (register → quote → CRUD) is complete; this slice is the milestone cut for `main`.
 
 Delivery standards (hooks, CI, protected `main`/`develop`, semantic-release) are enforced.
 
@@ -127,16 +127,27 @@ M = P \frac{r(1+r)^{n}}{(1+r)^{n}-1}
 
 ## Pricing decisions
 
-| Decision        | Choice                                         | Why                                                                                                                                           |
-| --------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Interest        | Amortized reducing-balance @ 6.5% annual       | Matches the assessment offerings; deterministic and easy to golden-test                                                                       |
-| Money unit      | Integer cents at the domain boundary           | Avoids float drift in stored totals; display formatting stays out of the domain                                                               |
-| Rounding        | `Math.round` on the monthly payment            | Single, explicit rule; totals are `monthly × term` from that rounded payment                                                                  |
-| Decimal library | Not used (`decimal.js` / Dinero / etc.)        | Fixed rate + three terms; cents + one round + golden tests are enough for now                                                                 |
-| Formula engine  | Strategy + Nest DI (`AMORTIZATION_CALCULATOR`) | `RepaymentPolicy` owns the cents API; the token binds the formula. Override the provider to plug in a decimal engine without touching callers |
-| Formula float   | Inside `NativeAmortizationCalculator` only     | Accepted trade-off today; a decimal calculator plugs in behind the same interface                                                             |
-| Delivery        | Pricing module before contracts HTTP           | Pricing correctness is proven in isolation; CRUD stays a thin owner of persistence + authz                                                    |
-| HTTP amounts    | Contracts must accept cents (or parse once)    | Never trust JSON number floats as money at the API boundary                                                                                   |
+| Decision          | Choice                                         | Why                                                                                                                                           |
+| ----------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Interest          | Amortized reducing-balance @ 6.5% annual       | Matches the assessment offerings; deterministic and easy to golden-test                                                                       |
+| Money unit        | Integer cents at the domain boundary           | Avoids float drift in stored totals; display formatting stays out of the domain                                                               |
+| Rounding          | `Math.round` on the monthly payment            | Single, explicit rule; totals are `monthly × term` from that rounded payment                                                                  |
+| Decimal library   | Not used (`decimal.js` / Dinero / etc.)        | Fixed rate + three terms; cents + one round + golden tests are enough for now                                                                 |
+| Formula engine    | Strategy + Nest DI (`AMORTIZATION_CALCULATOR`) | `RepaymentPolicy` owns the cents API; the token binds the formula. Override the provider to plug in a decimal engine without touching callers |
+| Formula float     | Inside `NativeAmortizationCalculator` only     | Accepted trade-off today; a decimal calculator plugs in behind the same interface                                                             |
+| Delivery          | Pricing module before contracts HTTP           | Pricing correctness is proven in isolation; CRUD stays a thin owner of persistence + authz                                                    |
+| HTTP amounts      | Contracts must accept cents (or parse once)    | Never trust JSON number floats as money at the API boundary                                                                                   |
+| Principal ceiling | `MAX_PRINCIPAL_CENTS` (1e9)                    | Keeps option totals inside SQLite/Prisma Int at 6.5% / 36 months; DTO + domain both enforce it                                                |
+
+## Contracts decisions
+
+| Decision              | Choice                                                             | Why                                                                                                                                                        |
+| --------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ownership             | Owner-scoped queries; cross-user → `404`                           | Avoids leaking whether another user’s contract id exists                                                                                                   |
+| Quote persistence     | Snapshot options (+ rate) on create/update                         | Historical contracts stay stable if pricing policy evolves later                                                                                           |
+| Concurrent `PATCH`    | Last-write-wins; options replaced inside a transaction             | Demo is single-actor; each write still leaves a coherent snapshot. No optimistic `version` / `409` until multi-writer edits are a real product requirement |
+| Concurrency test      | E2e race asserts both succeed + final snapshot is consistent       | Proves no corruption under overlap; does **not** claim a deterministic winner or serializability                                                           |
+| Next step (if needed) | Optimistic concurrency on `updatedAt` / `version` → `409 Conflict` | Cheap upgrade path when two tabs or roles can edit the same contract; locking is deferred until then                                                       |
 
 ## Prerequisites
 
@@ -165,28 +176,28 @@ npm run validate
 
 ## API surface
 
-| Method   | Path             | Auth | Status  | Purpose                        |
-| -------- | ---------------- | ---- | ------- | ------------------------------ |
-| `POST`   | `/auth/register` | —    | Live    | Create account                 |
-| `POST`   | `/auth/login`    | —    | Live    | Issue JWT                      |
-| `GET`    | `/auth/me`       | JWT  | Live    | Current user (guard proof)     |
-| `POST`   | `/contracts`     | JWT  | Planned | Create contract + term options |
-| `GET`    | `/contracts`     | JWT  | Planned | List own contracts             |
-| `GET`    | `/contracts/:id` | JWT  | Planned | Get one (ownership enforced)   |
-| `PATCH`  | `/contracts/:id` | JWT  | Planned | Update amount → recalc         |
-| `DELETE` | `/contracts/:id` | JWT  | Planned | Delete                         |
-| `GET`    | `/health`        | —    | Live    | Liveness                       |
-| `GET`    | `/api/docs`      | —    | Live    | Swagger UI                     |
+| Method   | Path             | Auth | Status | Purpose                        |
+| -------- | ---------------- | ---- | ------ | ------------------------------ |
+| `POST`   | `/auth/register` | —    | Live   | Create account                 |
+| `POST`   | `/auth/login`    | —    | Live   | Issue JWT                      |
+| `GET`    | `/auth/me`       | JWT  | Live   | Current user (guard proof)     |
+| `POST`   | `/contracts`     | JWT  | Live   | Create contract + term options |
+| `GET`    | `/contracts`     | JWT  | Live   | List own contracts             |
+| `GET`    | `/contracts/:id` | JWT  | Live   | Get one (ownership enforced)   |
+| `PATCH`  | `/contracts/:id` | JWT  | Live   | Update amount → recalc         |
+| `DELETE` | `/contracts/:id` | JWT  | Live   | Delete                         |
+| `GET`    | `/health`        | —    | Live   | Liveness                       |
+| `GET`    | `/api/docs`      | —    | Live   | Swagger UI                     |
 
 ## Delivery plan
 
 1. **Engineering template** — hooks, CI, branches, docs
 2. **Platform** — config, validation, Swagger, errors, logging
 3. **Identity** — register/login, bcrypt, JWT guard
-4. **Pricing** — `RepaymentPolicy` + Strategy DI + golden unit tests _(this)_
+4. **Pricing** — `RepaymentPolicy` + Strategy DI + golden unit tests
 5. **Contracts** — CRUD + ownership + option snapshots
-6. **Hardening** — negative paths, IDOR checks
-7. **Narrative** — README as design/runbook for assessors
+6. **Hardening** — auth/contracts edge cases (expired JWT, IDOR, principal ceiling, cascade, race smoke)
+7. **Milestone release** — `develop` → `main` _(this)_
 8. **Stretch** — rate limits, thin UI (only if core is solid)
 
 ## Engineering notes
