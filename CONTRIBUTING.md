@@ -48,9 +48,11 @@ npm run validate
 
 That runs typecheck, lint, format check, unit + e2e tests, and build.
 
+Unit coverage must stay at **≥ 90%** statements/branches/functions/lines (`jest` `coverageThreshold`). Nest bootstrap/module wiring is excluded from that unit gate and is covered by e2e.
+
 ### CI (GitHub Actions)
 
-Every push/PR to `main` or `develop` runs lint, format, unit (coverage), e2e, and build on Node 22.
+Every push/PR to `main` or `develop` runs lint, format, unit (coverage gate), e2e, and build on Node 22.
 
 ## Commit messages
 

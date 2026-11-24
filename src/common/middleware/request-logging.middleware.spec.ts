@@ -114,4 +114,21 @@ describe('requestLoggingMiddleware', () => {
 
     expect(error).toHaveBeenCalledWith('GET /health 500 7ms requestId=req-500');
   });
+
+  it('falls back when request id and originalUrl are missing', () => {
+    freezeClock();
+
+    const request = {
+      method: 'GET',
+      url: '/health',
+    } as Request;
+    const response = createResponse();
+    const next = jest.fn() as NextFunction;
+
+    requestLoggingMiddleware(request, response, next);
+    response.statusCode = 200;
+    response.emitFinish();
+
+    expect(log).toHaveBeenCalledWith('GET /health 200 7ms requestId=-');
+  });
 });
