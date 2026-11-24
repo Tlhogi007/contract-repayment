@@ -14,8 +14,10 @@ import {
   ApiCreatedResponse,
   ApiOkResponse,
   ApiTags,
+  ApiTooManyRequestsResponse,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { ApiErrorResponse } from '../common/http/api-error-response';
 import type { AuthenticatedUser } from './auth.types';
 import { AuthService } from './auth.service';
@@ -27,11 +29,13 @@ import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @ApiTags('auth')
+@ApiTooManyRequestsResponse({ type: ApiErrorResponse })
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.CREATED)
   @ApiCreatedResponse({ type: AuthResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorResponse })
@@ -41,6 +45,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: AuthResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorResponse })
