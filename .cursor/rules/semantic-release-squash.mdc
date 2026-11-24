@@ -1,0 +1,15 @@
+---
+description: Milestone squash merges to main must use a releasing conventional commit subject
+alwaysApply: true
+---
+
+# Semantic-release + squash to `main`
+
+When squash-merging a milestone/release PR into `main`, the **squash commit subject** must be a releasing type:
+
+- Use `feat:` or `fix:` (breaking with `feat!:` / `BREAKING CHANGE` when appropriate)
+- Do **not** use `chore:`, `docs:`, or `ci:` for the squash title of a feature milestone
+
+**Why:** semantic-release’s commit analyzer keys off the subject of commits since the last tag. Squash collapses the PR into one commit; a `chore:` subject means “no release” even if the body lists many `feat` commits.
+
+**Also:** PR title often becomes the default squash subject — title the release PR with `feat(...)` / `fix(...)` accordingly.

@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -18,15 +19,19 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiTags,
+  ApiTooManyRequestsResponse,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ApiErrorResponse } from '../common/http/api-error-response';
 import { ContractsService } from './contracts.service';
+import { ContractListResponseDto } from './dto/contract-list-response.dto';
 import { CreateContractDto } from './dto/create-contract.dto';
 import { ContractResponseDto } from './dto/contract-response.dto';
+import { ListContractsQueryDto } from './dto/list-contracts-query.dto';
 import { UpdateContractDto } from './dto/update-contract.dto';
 
 @ApiTags('contracts')
@@ -37,10 +42,12 @@ export class ContractsController {
   constructor(private readonly contractsService: ContractsService) {}
 
   @Post()
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @HttpCode(HttpStatus.CREATED)
   @ApiCreatedResponse({ type: ContractResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorResponse })
   @ApiUnauthorizedResponse({ type: ApiErrorResponse })
+  @ApiTooManyRequestsResponse({ type: ApiErrorResponse })
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateContractDto,
@@ -49,12 +56,14 @@ export class ContractsController {
   }
 
   @Get()
-  @ApiOkResponse({ type: [ContractResponseDto] })
+  @ApiOkResponse({ type: ContractListResponseDto })
+  @ApiBadRequestResponse({ type: ApiErrorResponse })
   @ApiUnauthorizedResponse({ type: ApiErrorResponse })
   findAll(
     @CurrentUser() user: AuthenticatedUser,
-  ): Promise<ContractResponseDto[]> {
-    return this.contractsService.findAll(user.id);
+    @Query() query: ListContractsQueryDto,
+  ): Promise<ContractListResponseDto> {
+    return this.contractsService.findAll(user.id, query);
   }
 
   @Get(':id')
@@ -69,10 +78,12 @@ export class ContractsController {
   }
 
   @Patch(':id')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @ApiOkResponse({ type: ContractResponseDto })
   @ApiBadRequestResponse({ type: ApiErrorResponse })
   @ApiUnauthorizedResponse({ type: ApiErrorResponse })
   @ApiNotFoundResponse({ type: ApiErrorResponse })
+  @ApiTooManyRequestsResponse({ type: ApiErrorResponse })
   update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
@@ -82,10 +93,12 @@ export class ContractsController {
   }
 
   @Delete(':id')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse()
   @ApiUnauthorizedResponse({ type: ApiErrorResponse })
   @ApiNotFoundResponse({ type: ApiErrorResponse })
+  @ApiTooManyRequestsResponse({ type: ApiErrorResponse })
   async remove(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,

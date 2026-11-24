@@ -101,7 +101,12 @@ describe('Contracts (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
-    expect(listRes.body).toEqual([
+    const listBody = listRes.body as {
+      data: ContractResponseDto[];
+      nextCursor: string | null;
+    };
+    expect(listBody.nextCursor).toBeNull();
+    expect(listBody.data).toEqual([
       expect.objectContaining({ id: created.id, principalCents: 100_000 }),
     ]);
 
@@ -194,7 +199,47 @@ describe('Contracts (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
-    expect(res.body).toEqual([]);
+    expect(res.body).toEqual({ data: [], nextCursor: null });
+  });
+
+  it('paginates contract lists with a cursor', async () => {
+    const { token } = await register('paging@example.com');
+
+    for (const principalCents of [100_000, 200_000, 300_000]) {
+      await request(app.getHttpServer())
+        .post('/contracts')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ principalCents })
+        .expect(201);
+    }
+
+    const page1 = await request(app.getHttpServer())
+      .get('/contracts')
+      .query({ limit: 2 })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    const first = page1.body as {
+      data: ContractResponseDto[];
+      nextCursor: string | null;
+    };
+    expect(first.data).toHaveLength(2);
+    expect(typeof first.nextCursor).toBe('string');
+
+    const page2 = await request(app.getHttpServer())
+      .get('/contracts')
+      .query({ limit: 2, cursor: first.nextCursor })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    const second = page2.body as {
+      data: ContractResponseDto[];
+      nextCursor: string | null;
+    };
+    expect(second.data).toHaveLength(1);
+    expect(second.nextCursor).toBeNull();
+    expect(second.data[0].id).not.toBe(first.data[0].id);
+    expect(second.data[0].id).not.toBe(first.data[1].id);
   });
 
   it('rejects principal above the money ceiling with 400', async () => {

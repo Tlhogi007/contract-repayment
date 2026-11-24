@@ -120,12 +120,49 @@ describe('ContractsService', () => {
     expect(result).toEqual(contractRow);
   });
 
-  it('lists contracts for the owner only', async () => {
-    await expect(service.findAll('user-1')).resolves.toEqual([contractRow]);
+  it('lists a bounded page for the owner only', async () => {
+    await expect(service.findAll('user-1')).resolves.toEqual({
+      data: [contractRow],
+      nextCursor: null,
+    });
     const [[listArg]] = findMany.mock.calls as [
-      [{ where: { userId: string } }],
+      [{ where: { userId: string }; take: number }],
     ];
     expect(listArg.where).toEqual({ userId: 'user-1' });
+    expect(listArg.take).toBe(21);
+  });
+
+  it('returns nextCursor when more rows exist than the page size', async () => {
+    const page = [
+      { ...contractRow, id: 'c1' },
+      { ...contractRow, id: 'c2' },
+      { ...contractRow, id: 'c3' },
+    ];
+    findMany.mockResolvedValue(page);
+
+    await expect(service.findAll('user-1', { limit: 2 })).resolves.toEqual({
+      data: [page[0], page[1]],
+      nextCursor: 'c2',
+    });
+  });
+
+  it('applies cursor pagination and clamps oversized limits', async () => {
+    findMany.mockResolvedValue([contractRow]);
+
+    await service.findAll('user-1', { limit: 500, cursor: 'c-prev' });
+
+    const [[listArg]] = findMany.mock.calls as [
+      [
+        {
+          take: number;
+          cursor: { id: string };
+          skip: number;
+        },
+      ],
+    ];
+    expect(listArg.take).toBe(101);
+    expect(listArg.cursor).toEqual({ id: 'c-prev' });
+    expect(listArg.skip).toBe(1);
   });
 
   it('returns one owned contract', async () => {

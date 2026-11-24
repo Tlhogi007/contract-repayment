@@ -1,8 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RepaymentPolicy } from '../pricing/repayment-policy';
+import type { ContractListResponseDto } from './dto/contract-list-response.dto';
 import type { CreateContractDto } from './dto/create-contract.dto';
 import type { ContractResponseDto } from './dto/contract-response.dto';
+import {
+  DEFAULT_CONTRACTS_PAGE_SIZE,
+  MAX_CONTRACTS_PAGE_SIZE,
+  type ListContractsQueryDto,
+} from './dto/list-contracts-query.dto';
 import type { UpdateContractDto } from './dto/update-contract.dto';
 
 const optionSelect = {
@@ -57,12 +63,33 @@ export class ContractsService {
     return contract;
   }
 
-  async findAll(userId: string): Promise<ContractResponseDto[]> {
-    return this.prisma.contract.findMany({
+  async findAll(
+    userId: string,
+    query: ListContractsQueryDto = {},
+  ): Promise<ContractListResponseDto> {
+    const limit = Math.min(
+      query.limit ?? DEFAULT_CONTRACTS_PAGE_SIZE,
+      MAX_CONTRACTS_PAGE_SIZE,
+    );
+
+    const rows = await this.prisma.contract.findMany({
       where: { userId },
       select: contractSelect,
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
+      ...(query.cursor
+        ? {
+            cursor: { id: query.cursor },
+            skip: 1,
+          }
+        : {}),
     });
+
+    const hasMore = rows.length > limit;
+    const data = hasMore ? rows.slice(0, limit) : rows;
+    const nextCursor = hasMore ? (data[data.length - 1]?.id ?? null) : null;
+
+    return { data, nextCursor };
   }
 
   async findOne(userId: string, id: string): Promise<ContractResponseDto> {

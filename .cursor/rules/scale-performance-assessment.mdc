@@ -1,0 +1,16 @@
+---
+description: Assessment expects explicit scale/performance trade-offs, not just working CRUD
+alwaysApply: true
+---
+
+# Scale & performance (manager / senior bar)
+
+This submission is evaluated for production judgment. Do not treat performance as stretch-only commentary.
+
+When changing contracts, auth, or persistence:
+
+1. Prefer **bounded reads** (pagination) over unbounded `findMany`
+2. Prefer **snapshots / O(1) pricing** over recomputing on every read
+3. Protect **auth and write** surfaces with rate limits
+4. Document **what hurts first** (lists, SQLite, per-request JWT DB lookup, bcrypt, abuse) and the deliberate next step (Postgres URL, optimistic concurrency, caching) in the README
+5. Avoid fake scale (microservices, Redis for free math) before measuring
