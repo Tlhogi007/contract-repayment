@@ -7,31 +7,27 @@ import { JwtService } from '@nestjs/jwt';
 import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
+import type { JwtPayload } from './auth.types';
 import type { AuthResponseDto } from './dto/auth-response.dto';
 import type { LoginDto } from './dto/login.dto';
 import type { RegisterDto } from './dto/register.dto';
-import type { JwtPayload } from './auth.types';
 
 const BCRYPT_COST = 10;
 const INVALID_CREDENTIALS = 'Invalid credentials';
 
 @Injectable()
 export class AuthService {
-  private readonly prisma: PrismaService;
-  private readonly jwtService: JwtService;
-
-  constructor(prisma: PrismaService, jwtService: JwtService) {
-    this.prisma = prisma;
-    this.jwtService = jwtService;
-  }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
-    const email = this.normalizeEmail(dto.email);
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_COST);
 
     try {
       const user = await this.prisma.user.create({
-        data: { email, passwordHash },
+        data: { email: dto.email, passwordHash },
         select: { id: true, email: true, createdAt: true },
       });
 
@@ -48,9 +44,8 @@ export class AuthService {
   }
 
   async login(dto: LoginDto): Promise<AuthResponseDto> {
-    const email = this.normalizeEmail(dto.email);
     const user = await this.prisma.user.findUnique({
-      where: { email },
+      where: { email: dto.email },
     });
 
     if (!user) {
@@ -90,9 +85,5 @@ export class AuthService {
         createdAt: user.createdAt,
       },
     };
-  }
-
-  private normalizeEmail(email: string): string {
-    return email.trim().toLowerCase();
   }
 }

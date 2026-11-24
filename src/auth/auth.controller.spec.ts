@@ -37,4 +37,10 @@ describe('AuthController', () => {
     await expect(controller.login(dto)).resolves.toEqual(authResponse);
     expect(login).toHaveBeenCalledWith(dto);
   });
+
+  it('returns the authenticated user for /me', () => {
+    const user = { id: 'user-1', email: 'user@example.com' };
+
+    expect(controller.me(user)).toEqual(user);
+  });
 });

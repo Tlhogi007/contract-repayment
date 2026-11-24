@@ -44,7 +44,7 @@ describe('AuthService', () => {
       });
 
       const result = await service.register({
-        email: '  User@Example.com ',
+        email: 'user@example.com',
         password: 'password123',
       });
 
@@ -123,7 +123,7 @@ describe('AuthService', () => {
       });
 
       const result = await service.login({
-        email: 'User@Example.com',
+        email: 'user@example.com',
         password: 'password123',
       });
 

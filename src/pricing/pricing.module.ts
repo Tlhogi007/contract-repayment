@@ -5,10 +5,9 @@ import { RepaymentPolicy } from './repayment-policy';
 
 @Module({
   providers: [
-    NativeAmortizationCalculator,
     {
       provide: AMORTIZATION_CALCULATOR,
-      useExisting: NativeAmortizationCalculator,
+      useClass: NativeAmortizationCalculator,
     },
     RepaymentPolicy,
   ],

@@ -1,15 +1,3 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
+import { AuthCredentialsDto } from './auth-credentials.dto';
 
-export class RegisterDto {
-  @ApiProperty({ example: 'user@example.com' })
-  @IsEmail()
-  @MaxLength(254)
-  email!: string;
-
-  @ApiProperty({ example: 'password123', minLength: 8 })
-  @IsString()
-  @MinLength(8)
-  @MaxLength(72)
-  password!: string;
-}
+export class RegisterDto extends AuthCredentialsDto {}
