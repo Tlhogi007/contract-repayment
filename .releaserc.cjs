@@ -1,6 +1,10 @@
 /**
  * Semantic Release — versions and changelogs from conventional commits.
  * Releases publish from `main` only. `develop` is the integration branch.
+ *
+ * We do not use `@semantic-release/git` because `main` is PR-protected and
+ * the Actions token cannot push release bumps. GitHub Releases + tags are
+ * the source of truth; CHANGELOG.md is generated in CI artifacts via notes.
  */
 module.exports = {
   branches: ['main'],
@@ -32,15 +36,7 @@ module.exports = {
     [
       '@semantic-release/github',
       {
-        assets: [],
-      },
-    ],
-    [
-      '@semantic-release/git',
-      {
-        assets: ['CHANGELOG.md', 'package.json', 'package-lock.json'],
-        message:
-          'chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}',
+        assets: ['CHANGELOG.md'],
       },
     ],
   ],
