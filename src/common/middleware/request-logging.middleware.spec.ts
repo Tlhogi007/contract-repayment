@@ -1,6 +1,8 @@
 import { Logger } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
+import type { HttpMetricsService } from '../../observability/http-metrics.service';
 import {
+  createRequestLoggingMiddleware,
   formatAccessLog,
   requestLoggingMiddleware,
 } from './request-logging.middleware';
@@ -130,5 +132,47 @@ describe('requestLoggingMiddleware', () => {
     response.emitFinish();
 
     expect(log).toHaveBeenCalledWith('GET /health 200 7ms requestId=-');
+  });
+
+  it('records application routes on HttpMetricsService', () => {
+    freezeClock();
+    const recordHttpRequest = jest.fn();
+    const httpMetrics = { recordHttpRequest } as unknown as HttpMetricsService;
+    const middleware = createRequestLoggingMiddleware(httpMetrics);
+
+    const request = {
+      method: 'GET',
+      originalUrl: '/contracts',
+      url: '/contracts',
+      requestId: 'req-m',
+    } as Request;
+    const response = createResponse();
+
+    middleware(request, response, jest.fn() as NextFunction);
+    response.statusCode = 200;
+    response.emitFinish();
+
+    expect(recordHttpRequest).toHaveBeenCalledWith(200, 7);
+  });
+
+  it('skips probe and docs paths for metrics', () => {
+    freezeClock();
+    const recordHttpRequest = jest.fn();
+    const httpMetrics = { recordHttpRequest } as unknown as HttpMetricsService;
+    const middleware = createRequestLoggingMiddleware(httpMetrics);
+
+    const request = {
+      method: 'GET',
+      originalUrl: '/health/ready',
+      url: '/health/ready',
+      requestId: 'req-probe',
+    } as Request;
+    const response = createResponse();
+
+    middleware(request, response, jest.fn() as NextFunction);
+    response.statusCode = 200;
+    response.emitFinish();
+
+    expect(recordHttpRequest).not.toHaveBeenCalled();
   });
 });

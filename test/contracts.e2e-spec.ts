@@ -8,12 +8,15 @@ import { configureApp } from '../src/bootstrap';
 import { AuthResponseDto } from '../src/auth/dto/auth-response.dto';
 import { ContractResponseDto } from '../src/contracts/dto/contract-response.dto';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { startTestTelemetry } from './start-test-telemetry';
 
 describe('Contracts (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
 
   beforeEach(async () => {
+    startTestTelemetry();
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();

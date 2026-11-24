@@ -24,6 +24,9 @@ export interface AppEnv {
   DATABASE_URL: string;
   JWT_SECRET: string;
   JWT_EXPIRES_IN: string;
+  OTEL_SERVICE_NAME: string;
+  OTEL_EXPORTER_OTLP_ENDPOINT?: string;
+  SENTRY_DSN?: string;
 }
 
 export type ValidatedEnv = Record<string, unknown> & AppEnv;
@@ -53,6 +56,26 @@ export class EnvironmentVariables {
   @IsNotEmpty()
   @MaxLength(32)
   JWT_EXPIRES_IN?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(128)
+  OTEL_SERVICE_NAME?: string;
+
+  /** OTLP HTTP base, e.g. http://localhost:4318 — Datadog/Azure/AWS/Grafana agents accept this. */
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(512)
+  OTEL_EXPORTER_OTLP_ENDPOINT?: string;
+
+  /** When set, 5xx exceptions are also sent to Sentry. */
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(512)
+  SENTRY_DSN?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>): ValidatedEnv {
@@ -77,5 +100,8 @@ export function validateEnv(config: Record<string, unknown>): ValidatedEnv {
     DATABASE_URL: validated.DATABASE_URL,
     JWT_SECRET: validated.JWT_SECRET,
     JWT_EXPIRES_IN: validated.JWT_EXPIRES_IN ?? DEFAULT_JWT_EXPIRES_IN,
+    OTEL_SERVICE_NAME: validated.OTEL_SERVICE_NAME ?? 'contract-repayment-api',
+    OTEL_EXPORTER_OTLP_ENDPOINT: validated.OTEL_EXPORTER_OTLP_ENDPOINT,
+    SENTRY_DSN: validated.SENTRY_DSN,
   };
 }

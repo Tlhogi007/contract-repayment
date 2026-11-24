@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import type { ErrorReporter } from '../../observability/error-reporter';
 import { ApiErrorResponse } from '../http/api-error-response';
 import { AllExceptionsFilter } from './all-exceptions.filter';
 
@@ -25,13 +26,21 @@ function createHost(request: Partial<Request>) {
 }
 
 describe('AllExceptionsFilter', () => {
-  const filter = new AllExceptionsFilter();
+  const captureException = jest.fn();
+  const errorReporter: ErrorReporter = {
+    captureException,
+  };
+  const filter = new AllExceptionsFilter(errorReporter);
   let errorLog: jest.SpyInstance;
 
   beforeAll(() => {
     errorLog = jest
       .spyOn(Logger.prototype, 'error')
       .mockImplementation(() => undefined);
+  });
+
+  beforeEach(() => {
+    captureException.mockClear();
   });
 
   afterAll(() => {
@@ -79,6 +88,10 @@ describe('AllExceptionsFilter', () => {
     expect(errorLog).toHaveBeenCalledWith(
       expect.stringContaining('Unhandled exception GET /health'),
       expect.any(String),
+    );
+    expect(captureException).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.objectContaining({ statusCode: 500, path: '/health' }),
     );
   });
 

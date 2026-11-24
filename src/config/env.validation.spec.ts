@@ -20,6 +20,9 @@ describe('validateEnv', () => {
     expect(result.DATABASE_URL).toBe(requiredEnvFixture.DATABASE_URL);
     expect(result.JWT_SECRET).toBe(FAKE_JWT_SECRET);
     expect(result.JWT_EXPIRES_IN).toBe(DEFAULT_JWT_EXPIRES_IN);
+    expect(result.OTEL_SERVICE_NAME).toBe('contract-repayment-api');
+    expect(result.OTEL_EXPORTER_OTLP_ENDPOINT).toBeUndefined();
+    expect(result.SENTRY_DSN).toBeUndefined();
     expect(result.EXTRA).toBe('kept');
   });
 
