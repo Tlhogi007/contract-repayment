@@ -35,19 +35,6 @@ These are the calls this slice makes on purpose — the kind of trade-offs a tec
 | Password storage | bcrypt (cost 10); never returned in responses  | Standard one-way hash; hash stays off the wire                                               |
 | Persistence      | Prisma + SQLite locally; schema Postgres-ready | Fast clone → run for assessors; swap the URL later without rewriting the domain              |
 
-## Platform decisions
-
-These are the calls this slice makes on purpose — the kind of trade-offs a tech lead is expected to own:
-
-| Decision            | Choice                                  | Why                                                                                                        |
-| ------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Validation coercion | Off by default                          | Money and identity payloads must fail closed; DTOs opt in with `@Type` only when conversion is intentional |
-| Error contract      | One `ApiErrorResponse` shape            | Clients and logs share the same fields; unexpected exceptions never leak internals                         |
-| Request correlation | `x-request-id` + access log on `finish` | Every response, including Nest’s own 404s, can be traced without logging bodies                            |
-| Health              | Liveness only                           | Reports process facts; does not pretend DB/auth readiness before those dependencies exist                  |
-| Boot wiring         | Shared `configureApp()`                 | Production and e2e exercise the same pipes, filters, and docs surface                                      |
-| Scope               | Platform before domain                  | Auth and pricing sit on a stable base so later PRs stay reviewable and auditable                           |
-
 ## Branch model
 
 | Branch    | Role                                             |
