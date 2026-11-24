@@ -15,8 +15,11 @@ function readPackageVersion(): string {
 @Injectable()
 export class AppConfigService {
   readonly version = readPackageVersion();
+  private readonly config: ConfigService<AppEnv, true>;
 
-  constructor(private readonly config: ConfigService<AppEnv, true>) {}
+  constructor(config: ConfigService<AppEnv, true>) {
+    this.config = config;
+  }
 
   get port(): number {
     return this.config.get('PORT', { infer: true });
