@@ -1,7 +1,12 @@
-export const ANNUAL_INTEREST_RATE = 0.065;
-export const TERM_MONTHS = [12, 24, 36] as const;
+import type { AmortizationCalculator } from './amortization-calculator';
+import { NativeAmortizationCalculator } from './native-amortization-calculator';
+import { TERM_MONTHS, type TermMonths } from './terms';
 
-export type TermMonths = (typeof TERM_MONTHS)[number];
+export { TERM_MONTHS, type TermMonths } from './terms';
+export type { AmortizationCalculator } from './amortization-calculator';
+export { NativeAmortizationCalculator } from './native-amortization-calculator';
+
+export const ANNUAL_INTEREST_RATE = 0.065;
 
 export type RepaymentOption = {
   termMonths: TermMonths;
@@ -13,6 +18,14 @@ export type RepaymentOption = {
 export class RepaymentPolicy {
   readonly annualRate = ANNUAL_INTEREST_RATE;
   readonly terms = TERM_MONTHS;
+
+  private readonly calculator: AmortizationCalculator;
+
+  constructor(
+    calculator: AmortizationCalculator = new NativeAmortizationCalculator(),
+  ) {
+    this.calculator = calculator;
+  }
 
   quote(principalCents: number): RepaymentOption[] {
     this.assertPrincipalCents(principalCents);
@@ -37,11 +50,11 @@ export class RepaymentPolicy {
   monthlyPaymentCents(principalCents: number, termMonths: TermMonths): number {
     this.assertPrincipalCents(principalCents);
 
-    const monthlyRate = this.annualRate / 12;
-    const growth = (1 + monthlyRate) ** termMonths;
-    const payment = (principalCents * (monthlyRate * growth)) / (growth - 1);
-
-    return Math.round(payment);
+    return this.calculator.monthlyPaymentCents(
+      principalCents,
+      termMonths,
+      this.annualRate,
+    );
   }
 
   private assertPrincipalCents(principalCents: number): void {

@@ -1,3 +1,4 @@
+import type { AmortizationCalculator } from './amortization-calculator';
 import { RepaymentPolicy, TERM_MONTHS } from './repayment-policy';
 
 describe('RepaymentPolicy', () => {
@@ -66,5 +67,22 @@ describe('RepaymentPolicy', () => {
     expect(() => policy.quote(-100)).toThrow(RangeError);
     expect(() => policy.quote(10.5)).toThrow(RangeError);
     expect(() => policy.monthlyPaymentCents(0, 12)).toThrow(RangeError);
+  });
+
+  it('delegates formula math to the injected calculator (Strategy)', () => {
+    const monthlyPaymentCents = jest.fn().mockReturnValue(999);
+    const calculator: AmortizationCalculator = { monthlyPaymentCents };
+    const customPolicy = new RepaymentPolicy(calculator);
+
+    const options = customPolicy.quote(50_000);
+
+    expect(monthlyPaymentCents).toHaveBeenCalledTimes(3);
+    expect(monthlyPaymentCents).toHaveBeenCalledWith(50_000, 12, 0.065);
+    expect(options[0]).toEqual({
+      termMonths: 12,
+      monthlyPaymentCents: 999,
+      totalPayableCents: 999 * 12,
+      totalInterestCents: 999 * 12 - 50_000,
+    });
   });
 });
