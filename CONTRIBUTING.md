@@ -21,7 +21,7 @@ Never commit directly to `main` or `develop` in day-to-day work. Open a PR.
 ## Local setup
 
 ```bash
-nvm use          # or Node 20+
+nvm use          # Node 22 from .nvmrc
 npm install      # installs deps + husky hooks via prepare
 cp .env.example .env
 npm run start:dev
@@ -47,7 +47,7 @@ That runs typecheck, lint, format check, unit + e2e tests, and build.
 
 ### CI (GitHub Actions)
 
-Every push/PR to `main` or `develop` runs lint, format, unit (coverage), e2e, and build on Node 20 and 22.
+Every push/PR to `main` or `develop` runs lint, format, unit (coverage), e2e, and build on Node 22.
 
 ## Commit messages
 
