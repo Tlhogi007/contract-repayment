@@ -102,12 +102,15 @@ M = P \frac{r(1+r)^{n}}{(1+r)^{n}-1}
 
 ## Pricing decisions
 
-| Decision   | Choice                                   | Why                                                                                        |
-| ---------- | ---------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Interest   | Amortized reducing-balance @ 6.5% annual | Matches the assessment offerings; deterministic and easy to golden-test                    |
-| Money unit | Integer cents at the domain boundary     | Avoids float drift in stored totals; rand/dollar display is a formatting concern           |
-| Rounding   | `Math.round` on the monthly payment      | Single, explicit rule; totals are `monthly × term` from that rounded payment               |
-| Delivery   | Pure policy module before contracts HTTP | Pricing correctness is proven in isolation; CRUD stays a thin owner of persistence + authz |
+| Decision        | Choice                                        | Why                                                                                                                                                                                              |
+| --------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Interest        | Amortized reducing-balance @ 6.5% annual      | Matches the assessment offerings; deterministic and easy to golden-test                                                                                                                          |
+| Money unit      | Integer cents at the domain boundary          | Avoids float drift in stored totals; display formatting stays out of the domain                                                                                                                  |
+| Rounding        | `Math.round` on the monthly payment           | Single, explicit rule; totals are `monthly × term` from that rounded payment                                                                                                                     |
+| Decimal library | Not used (`decimal.js` / Dinero / etc.)       | Fixed rate + three terms; cents + one round + golden tests are enough. A decimal lib is the upgrade path if schedules must match a bank ledger exactly — not worth the dependency for this scope |
+| Formula float   | JS `number` only inside the amortization step | Accepted trade-off: intermediates may be binary floats; outputs are integer cents pinned by tests                                                                                                |
+| Delivery        | Pure policy module before contracts HTTP      | Pricing correctness is proven in isolation; CRUD stays a thin owner of persistence + authz                                                                                                       |
+| HTTP amounts    | Contracts must accept cents (or parse once)   | Never trust JSON number floats as money at the API boundary                                                                                                                                      |
 
 ## Prerequisites
 
