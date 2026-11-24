@@ -1,6 +1,8 @@
+import { Injectable } from '@nestjs/common';
 import type { AmortizationCalculator } from './amortization-calculator';
 import type { TermMonths } from './terms';
 
+@Injectable()
 export class NativeAmortizationCalculator implements AmortizationCalculator {
   monthlyPaymentCents(
     principalCents: number,

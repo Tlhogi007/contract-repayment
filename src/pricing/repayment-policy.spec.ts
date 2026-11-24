@@ -1,8 +1,9 @@
 import type { AmortizationCalculator } from './amortization-calculator';
+import { NativeAmortizationCalculator } from './native-amortization-calculator';
 import { RepaymentPolicy, TERM_MONTHS } from './repayment-policy';
 
 describe('RepaymentPolicy', () => {
-  const policy = new RepaymentPolicy();
+  const policy = new RepaymentPolicy(new NativeAmortizationCalculator());
 
   it('exposes the assessment rate and terms', () => {
     expect(policy.annualRate).toBe(0.065);

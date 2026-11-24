@@ -1,9 +1,11 @@
+import { Inject, Injectable } from '@nestjs/common';
 import type { AmortizationCalculator } from './amortization-calculator';
-import { NativeAmortizationCalculator } from './native-amortization-calculator';
+import { AMORTIZATION_CALCULATOR } from './amortization-calculator.token';
 import { TERM_MONTHS, type TermMonths } from './terms';
 
 export { TERM_MONTHS, type TermMonths } from './terms';
 export type { AmortizationCalculator } from './amortization-calculator';
+export { AMORTIZATION_CALCULATOR } from './amortization-calculator.token';
 export { NativeAmortizationCalculator } from './native-amortization-calculator';
 
 export const ANNUAL_INTEREST_RATE = 0.065;
@@ -15,17 +17,15 @@ export type RepaymentOption = {
   totalInterestCents: number;
 };
 
+@Injectable()
 export class RepaymentPolicy {
   readonly annualRate = ANNUAL_INTEREST_RATE;
   readonly terms = TERM_MONTHS;
 
-  private readonly calculator: AmortizationCalculator;
-
   constructor(
-    calculator: AmortizationCalculator = new NativeAmortizationCalculator(),
-  ) {
-    this.calculator = calculator;
-  }
+    @Inject(AMORTIZATION_CALCULATOR)
+    private readonly calculator: AmortizationCalculator,
+  ) {}
 
   quote(principalCents: number): RepaymentOption[] {
     this.assertPrincipalCents(principalCents);
