@@ -4,7 +4,7 @@ NestJS microservice for **device contract repayment calculations**.
 
 **Demo journey:** register / login → submit a principal in **integer cents** → receive comparable **12 / 24 / 36-month** offerings at **6.5%** → manage your own contracts (JWT).
 
-**Status:** Complete and released on [`main`](https://github.com/Tlhogi007/contract-repayment-api) as **v1.1.0**. Clone, run, and exercise Swagger without extra setup beyond Node 22+.
+**Status:** Complete and released on [`main`](https://github.com/Tlhogi007/contract-repayment-api) as **v1.2.0**. Clone, run, and exercise Swagger without extra setup beyond Node 22+.
 
 ---
 
@@ -54,20 +54,20 @@ Golden options for `100000` cents: monthly **8630 / 4455 / 3065** (12 / 24 / 36)
 
 ## API surface
 
-| Method   | Path             | Auth | Purpose                               |
-| -------- | ---------------- | ---- | ------------------------------------- |
-| `POST`   | `/auth/register` | —    | Create account                        |
-| `POST`   | `/auth/login`    | —    | Issue JWT                             |
-| `GET`    | `/auth/me`       | JWT  | Current user                          |
-| `POST`   | `/contracts`     | JWT  | Create + snapshot term options        |
-| `GET`    | `/contracts`     | JWT  | List own contracts (`limit`/`cursor`) |
-| `GET`    | `/contracts/:id` | JWT  | Get one (owner only)                  |
-| `PATCH`  | `/contracts/:id` | JWT  | Update principal → recalc             |
-| `DELETE` | `/contracts/:id` | JWT  | Delete                                |
-| `GET`    | `/health`        | —    | Liveness                              |
-| `GET`    | `/api/docs`      | —    | Swagger UI                            |
+| Method   | Path             | Auth | Purpose                                         |
+| -------- | ---------------- | ---- | ----------------------------------------------- |
+| `POST`   | `/auth/register` | —    | Create account                                  |
+| `POST`   | `/auth/login`    | —    | Issue JWT                                       |
+| `GET`    | `/auth/me`       | JWT  | Current user                                    |
+| `POST`   | `/contracts`     | JWT  | Create + snapshot term options                  |
+| `GET`    | `/contracts`     | JWT  | List own contracts (`limit`/`cursor`)           |
+| `GET`    | `/contracts/:id` | JWT  | Get one (owner only)                            |
+| `PATCH`  | `/contracts/:id` | JWT  | Update principal → recalc (`expectedUpdatedAt`) |
+| `DELETE` | `/contracts/:id` | JWT  | Delete                                          |
+| `GET`    | `/health`        | —    | Liveness                                        |
+| `GET`    | `/api/docs`      | —    | Swagger UI                                      |
 
-Cross-user contract access returns **404** (not 403) so existence is not leaked. `GET /` has no route by design.
+Cross-user contract access returns **404** (not 403) so existence is not leaked. Stale `PATCH` (wrong `expectedUpdatedAt`) returns **409**. `GET /` has no route by design.
 
 ---
 
@@ -162,14 +162,13 @@ Trade-offs a tech lead is expected to own. Skim the table that matches the quest
 
 ### Contracts
 
-| Decision           | Choice                                     | Why                                               |
-| ------------------ | ------------------------------------------ | ------------------------------------------------- |
-| Ownership          | Owner-scoped; cross-user → `404`           | Don’t leak other users’ ids                       |
-| Quotes             | Snapshot on write                          | Stable history if policy changes                  |
-| List reads         | Cursor pagination (`limit` ≤ 100, def 20)  | Unbounded `findMany` is the first list bottleneck |
-| Concurrent `PATCH` | Last-write-wins in a transaction           | Single-actor demo; coherent snapshot either way   |
-| Concurrency test   | E2e race → both 200 + consistent final row | No corruption claim ≠ serializability             |
-| Later upgrade      | Optimistic `version` / `updatedAt` → `409` | When multi-writer edits become real               |
+| Decision           | Choice                                            | Why                                               |
+| ------------------ | ------------------------------------------------- | ------------------------------------------------- |
+| Ownership          | Owner-scoped; cross-user → `404`                  | Don’t leak other users’ ids                       |
+| Quotes             | Snapshot on write                                 | Stable history if policy changes                  |
+| List reads         | Cursor pagination (`limit` ≤ 100, def 20)         | Unbounded `findMany` is the first list bottleneck |
+| Concurrent `PATCH` | Require `expectedUpdatedAt`; stale → `409`        | Clients must refresh; no silent overwrite         |
+| Concurrency test   | E2e race → one `200` + one `409`; winner coherent | Proves the lock, not just snapshot integrity      |
 
 ---
 
@@ -184,7 +183,7 @@ Pricing math is not the bottleneck (three O(1) quotes, snapshotted on write). Pr
 | SQLite locally     | Fast assessor clone → run                                              | Swap `DATABASE_URL` to Postgres (schema portable) |
 | JWT validation     | DB check user still exists                                             | Short TTL cache if auth QPS dominates             |
 | bcrypt             | Cost 10 on register/login                                              | Keep; isolate auth tier only after measuring      |
-| Concurrent edits   | LWW + coherent snapshot                                                | Optimistic concurrency → `409`                    |
+| Concurrent edits   | Optimistic `expectedUpdatedAt` → `409`                                 | Integer `version` column if clock skew matters    |
 | Observability      | Correlated access logs (no bodies)                                     | Metrics/alerts; sample logs under load            |
 
 **Deliberately not yet:** Redis for quotes, microservices split, read replicas — cost exceeds signal until measured.
@@ -232,8 +231,9 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for workflow details.
 5. Contracts — CRUD + ownership + snapshots
 6. Hardening — expired JWT, IDOR, ceiling, cascade, race smoke
 7. Milestone release — **v1.1.0** on `main`
-8. Scale posture — list pagination + rate limits; Postgres path documented
-9. Stretch (optional) — thin UI, optimistic `409`, Redis throttle store
+8. Scale posture — list pagination + rate limits → **v1.2.0**
+9. Optimistic concurrency — `expectedUpdatedAt` on `PATCH` → `409`
+10. Remaining stretch (optional) — thin UI, Redis throttle store
 
 ---
 

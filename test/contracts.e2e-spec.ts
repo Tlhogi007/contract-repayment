@@ -120,7 +120,10 @@ describe('Contracts (e2e)', () => {
     const patchRes = await request(app.getHttpServer())
       .patch(`/contracts/${created.id}`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ principalCents: 1_000_000 })
+      .send({
+        principalCents: 1_000_000,
+        expectedUpdatedAt: created.updatedAt,
+      })
       .expect(200);
 
     const updated = patchRes.body as ContractResponseDto;
@@ -165,7 +168,10 @@ describe('Contracts (e2e)', () => {
     await request(app.getHttpServer())
       .patch(`/contracts/${contractId}`)
       .set('Authorization', `Bearer ${stranger.token}`)
-      .send({ principalCents: 200_000 })
+      .send({
+        principalCents: 200_000,
+        expectedUpdatedAt: (createRes.body as ContractResponseDto).updatedAt,
+      })
       .expect(404);
 
     await request(app.getHttpServer())
@@ -254,7 +260,39 @@ describe('Contracts (e2e)', () => {
     expect((res.body as ApiErrorResponse).statusCode).toBe(400);
   });
 
-  it('keeps a consistent snapshot after concurrent patches', async () => {
+  it('rejects a stale expectedUpdatedAt with 409', async () => {
+    const { token } = await register('stale@example.com');
+
+    const createRes = await request(app.getHttpServer())
+      .post('/contracts')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ principalCents: 100_000 })
+      .expect(201);
+
+    const created = createRes.body as ContractResponseDto;
+
+    await request(app.getHttpServer())
+      .patch(`/contracts/${created.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        principalCents: 150_000,
+        expectedUpdatedAt: created.updatedAt,
+      })
+      .expect(200);
+
+    const stale = await request(app.getHttpServer())
+      .patch(`/contracts/${created.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        principalCents: 200_000,
+        expectedUpdatedAt: created.updatedAt,
+      })
+      .expect(409);
+
+    expect((stale.body as ApiErrorResponse).statusCode).toBe(409);
+  });
+
+  it('allows only one winner under concurrent patches with the same token', async () => {
     const { token } = await register('race@example.com');
 
     const createRes = await request(app.getHttpServer())
@@ -263,28 +301,40 @@ describe('Contracts (e2e)', () => {
       .send({ principalCents: 100_000 })
       .expect(201);
 
-    const contractId = (createRes.body as ContractResponseDto).id;
+    const created = createRes.body as ContractResponseDto;
 
     const [first, second] = await Promise.all([
       request(app.getHttpServer())
-        .patch(`/contracts/${contractId}`)
+        .patch(`/contracts/${created.id}`)
         .set('Authorization', `Bearer ${token}`)
-        .send({ principalCents: 100_000 }),
+        .send({
+          principalCents: 100_000,
+          expectedUpdatedAt: created.updatedAt,
+        }),
       request(app.getHttpServer())
-        .patch(`/contracts/${contractId}`)
+        .patch(`/contracts/${created.id}`)
         .set('Authorization', `Bearer ${token}`)
-        .send({ principalCents: 200_000 }),
+        .send({
+          principalCents: 200_000,
+          expectedUpdatedAt: created.updatedAt,
+        }),
     ]);
 
-    expect([first.status, second.status]).toEqual([200, 200]);
+    const statuses = [first.status, second.status].sort();
+    expect(statuses).toEqual([200, 409]);
+
+    const winner =
+      first.status === 200
+        ? (first.body as ContractResponseDto)
+        : (second.body as ContractResponseDto);
 
     const getRes = await request(app.getHttpServer())
-      .get(`/contracts/${contractId}`)
+      .get(`/contracts/${created.id}`)
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
     const body = getRes.body as ContractResponseDto;
-    expect([100_000, 200_000]).toContain(body.principalCents);
+    expect(body.principalCents).toBe(winner.principalCents);
     expect(body.options).toHaveLength(3);
     expect(
       body.options.every(
