@@ -15,11 +15,8 @@ function readPackageVersion(): string {
 @Injectable()
 export class AppConfigService {
   readonly version = readPackageVersion();
-  private readonly config: ConfigService<AppEnv, true>;
 
-  constructor(config: ConfigService<AppEnv, true>) {
-    this.config = config;
-  }
+  constructor(private readonly config: ConfigService<AppEnv, true>) {}
 
   get port(): number {
     return this.config.get('PORT', { infer: true });
@@ -27,5 +24,13 @@ export class AppConfigService {
 
   get nodeEnv(): NodeEnv {
     return this.config.get('NODE_ENV', { infer: true });
+  }
+
+  get jwtSecret(): string {
+    return this.config.get('JWT_SECRET', { infer: true });
+  }
+
+  get jwtExpiresIn(): string {
+    return this.config.get('JWT_EXPIRES_IN', { infer: true });
   }
 }

@@ -24,7 +24,7 @@ describe('HealthController', () => {
     controller = module.get(HealthController);
   });
 
-  it('returns a liveness payload without secrets', () => {
+  it('returns a liveness payload without credentials or tokens', () => {
     const result = controller.check();
 
     const { uptimeSeconds, ...liveness } = result;

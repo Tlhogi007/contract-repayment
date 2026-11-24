@@ -6,11 +6,7 @@ import { API_SERVICE_NAME, HealthResponseDto } from './dto/health-response.dto';
 @ApiTags('health')
 @Controller('health')
 export class HealthController {
-  private readonly appConfig: AppConfigService;
-
-  constructor(appConfig: AppConfigService) {
-    this.appConfig = appConfig;
-  }
+  constructor(private readonly appConfig: AppConfigService) {}
 
   @Get()
   @ApiOperation({
