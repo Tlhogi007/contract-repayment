@@ -8,7 +8,7 @@ Built as a **bounded service under delivery discipline**: clear ownership bounda
 
 ## Current status
 
-**Identity** — `POST /auth/register` and `POST /auth/login` issue JWTs; passwords are bcrypt-hashed; Prisma/SQLite persists users. Platform foundation (config, validation, OpenAPI, errors, logging, liveness) remains in place. Pricing and contracts CRUD are next.
+**Pricing** — pure `RepaymentPolicy` quotes 12 / 24 / 36-month amortized options at 6.5% in integer cents (golden unit tests). Identity (register/login JWT) and platform foundation remain in place. Contracts CRUD is next.
 
 Delivery standards (hooks, CI, protected `main`/`develop`, semantic-release) are enforced.
 
@@ -85,7 +85,7 @@ HTTP / OpenAPI
   → Prisma persistence (SQLite for local demo; schema Postgres-portable)
 ```
 
-## Interest policy (planned)
+## Interest policy
 
 Amortized (reducing-balance) monthly payment:
 
@@ -93,11 +93,21 @@ Amortized (reducing-balance) monthly payment:
 M = P \frac{r(1+r)^{n}}{(1+r)^{n}-1}
 \]
 
-- \(P\) — principal (device amount)
+- \(P\) — principal in **integer cents**
 - \(r\) — \(0.065 / 12\)
 - \(n\) — 12 \| 24 \| 36
+- \(M\) — monthly payment, rounded to the nearest cent (`Math.round`)
 
-Money is handled in **integer cents** at the domain boundary. Option snapshots are persisted on write so historical quotes stay stable if policy evolves.
+`RepaymentPolicy` is pure domain code (no Nest/HTTP). Contracts will snapshot quoted options on write so historical quotes stay stable if policy evolves.
+
+## Pricing decisions
+
+| Decision   | Choice                                   | Why                                                                                        |
+| ---------- | ---------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Interest   | Amortized reducing-balance @ 6.5% annual | Matches the assessment offerings; deterministic and easy to golden-test                    |
+| Money unit | Integer cents at the domain boundary     | Avoids float drift in stored totals; rand/dollar display is a formatting concern           |
+| Rounding   | `Math.round` on the monthly payment      | Single, explicit rule; totals are `monthly × term` from that rounded payment               |
+| Delivery   | Pure policy module before contracts HTTP | Pricing correctness is proven in isolation; CRUD stays a thin owner of persistence + authz |
 
 ## Prerequisites
 
@@ -142,8 +152,8 @@ npm run validate
 
 1. **Engineering template** — hooks, CI, branches, docs
 2. **Platform** — config, validation, Swagger, errors, logging
-3. **Identity** — register/login, bcrypt, JWT guard _(this)_
-4. **Pricing** — pure `RepaymentPolicy` + golden unit tests
+3. **Identity** — register/login, bcrypt, JWT guard
+4. **Pricing** — pure `RepaymentPolicy` + golden unit tests _(this)_
 5. **Contracts** — CRUD + ownership + option snapshots
 6. **Hardening** — negative paths, IDOR checks
 7. **Narrative** — README as design/runbook for assessors
