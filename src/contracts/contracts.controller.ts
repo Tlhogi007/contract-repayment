@@ -14,6 +14,7 @@ import {
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
@@ -83,6 +84,7 @@ export class ContractsController {
   @ApiBadRequestResponse({ type: ApiErrorResponse })
   @ApiUnauthorizedResponse({ type: ApiErrorResponse })
   @ApiNotFoundResponse({ type: ApiErrorResponse })
+  @ApiConflictResponse({ type: ApiErrorResponse })
   @ApiTooManyRequestsResponse({ type: ApiErrorResponse })
   update(
     @CurrentUser() user: AuthenticatedUser,

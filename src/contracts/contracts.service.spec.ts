@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { ContractsService } from './contracts.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RepaymentPolicy } from '../pricing/repayment-policy';
@@ -8,6 +8,7 @@ describe('ContractsService', () => {
   const findMany = jest.fn();
   const findFirst = jest.fn();
   const update = jest.fn();
+  const updateMany = jest.fn();
   const deleteContract = jest.fn();
   const deleteManyOptions = jest.fn();
   const quote = jest.fn();
@@ -56,6 +57,7 @@ describe('ContractsService', () => {
       findMany,
       findFirst,
       update,
+      updateMany,
       delete: deleteContract,
     },
     contractOption: {
@@ -79,6 +81,7 @@ describe('ContractsService', () => {
     create.mockResolvedValue(contractRow);
     findMany.mockResolvedValue([contractRow]);
     findFirst.mockResolvedValue(contractRow);
+    updateMany.mockResolvedValue({ count: 1 });
     update.mockResolvedValue({
       ...contractRow,
       principalCents: 150_000,
@@ -182,33 +185,63 @@ describe('ContractsService', () => {
   it('recalculates and replaces snapshots on update', async () => {
     const result = await service.update('user-1', 'contract-1', {
       principalCents: 150_000,
+      expectedUpdatedAt: updatedAt.toISOString(),
     });
 
     expect(quote).toHaveBeenCalledWith(150_000);
+    expect(updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'contract-1',
+        userId: 'user-1',
+        updatedAt,
+      },
+      data: {
+        principalCents: 150_000,
+        annualRate: 0.065,
+      },
+    });
     expect(deleteManyOptions).toHaveBeenCalledWith({
       where: { contractId: 'contract-1' },
     });
     const [[updateArg]] = update.mock.calls as [
-      [
-        {
-          where: { id: string };
-          data: { principalCents: number; annualRate: number };
-        },
-      ],
+      [{ where: { id: string }; data: { options: unknown } }],
     ];
     expect(updateArg.where).toEqual({ id: 'contract-1' });
-    expect(updateArg.data.principalCents).toBe(150_000);
-    expect(updateArg.data.annualRate).toBe(0.065);
     expect(result.principalCents).toBe(150_000);
+  });
+
+  it('rejects stale expectedUpdatedAt with ConflictException', async () => {
+    await expect(
+      service.update('user-1', 'contract-1', {
+        principalCents: 150_000,
+        expectedUpdatedAt: '2020-01-01T00:00:00.000Z',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it('rejects update when the optimistic lock loses the race', async () => {
+    updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(
+      service.update('user-1', 'contract-1', {
+        principalCents: 150_000,
+        expectedUpdatedAt: updatedAt.toISOString(),
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(deleteManyOptions).not.toHaveBeenCalled();
   });
 
   it('rejects update when the contract is not owned', async () => {
     findFirst.mockResolvedValue(null);
 
     await expect(
-      service.update('user-1', 'foreign', { principalCents: 150_000 }),
+      service.update('user-1', 'foreign', {
+        principalCents: 150_000,
+        expectedUpdatedAt: updatedAt.toISOString(),
+      }),
     ).rejects.toBeInstanceOf(NotFoundException);
-    expect(update).not.toHaveBeenCalled();
+    expect(updateMany).not.toHaveBeenCalled();
   });
 
   it('deletes an owned contract', async () => {

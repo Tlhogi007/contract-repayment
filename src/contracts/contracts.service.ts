@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RepaymentPolicy } from '../pricing/repayment-policy';
 import type { ContractListResponseDto } from './dto/contract-list-response.dto';
@@ -101,18 +105,37 @@ export class ContractsService {
     id: string,
     dto: UpdateContractDto,
   ): Promise<ContractResponseDto> {
-    await this.findOwnedOrThrow(userId, id);
+    const existing = await this.findOwnedOrThrow(userId, id);
+    const expectedUpdatedAt = new Date(dto.expectedUpdatedAt);
+
+    if (existing.updatedAt.getTime() !== expectedUpdatedAt.getTime()) {
+      throw new ConflictException(
+        'Contract was modified; refresh and retry with the latest updatedAt',
+      );
+    }
 
     const quotes = this.repaymentPolicy.quote(dto.principalCents);
 
     return this.prisma.$transaction(async (tx) => {
+      const locked = await tx.contract.updateMany({
+        where: { id, userId, updatedAt: expectedUpdatedAt },
+        data: {
+          principalCents: dto.principalCents,
+          annualRate: this.repaymentPolicy.annualRate,
+        },
+      });
+
+      if (locked.count === 0) {
+        throw new ConflictException(
+          'Contract was modified; refresh and retry with the latest updatedAt',
+        );
+      }
+
       await tx.contractOption.deleteMany({ where: { contractId: id } });
 
       return tx.contract.update({
         where: { id },
         data: {
-          principalCents: dto.principalCents,
-          annualRate: this.repaymentPolicy.annualRate,
           options: {
             create: quotes.map((quote) => ({
               termMonths: quote.termMonths,
