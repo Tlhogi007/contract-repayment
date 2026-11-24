@@ -8,7 +8,7 @@ Built as a **bounded service under delivery discipline**: clear ownership bounda
 
 ## Current status
 
-**Contracts** — JWT-guarded CRUD with owner-scoped access (cross-user → 404) and frozen 12/24/36 option snapshots from `RepaymentPolicy`. Identity and pricing are in place. The assessor demo journey (register → quote → CRUD) is complete; this slice is the milestone cut for `main`.
+**Contracts** — JWT-guarded CRUD with owner-scoped access (cross-user → 404) and frozen 12/24/36 option snapshots from `RepaymentPolicy`. Identity and pricing are in place. Assessor demo journey is complete and released on `main`.
 
 Delivery standards (hooks, CI, protected `main`/`develop`, semantic-release) are enforced.
 
