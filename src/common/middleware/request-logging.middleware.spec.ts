@@ -26,6 +26,10 @@ function createResponse(): Response & {
   return response as Response & { emitFinish: () => void; statusCode: number };
 }
 
+function freezeClock(): void {
+  jest.spyOn(Date, 'now').mockReturnValueOnce(1_000).mockReturnValueOnce(1_007);
+}
+
 describe('requestLoggingMiddleware', () => {
   let log: jest.SpyInstance;
   let warn: jest.SpyInstance;
@@ -54,6 +58,8 @@ describe('requestLoggingMiddleware', () => {
   });
 
   it('logs successful requests', () => {
+    freezeClock();
+
     const request = {
       method: 'GET',
       originalUrl: '/health',
@@ -68,10 +74,12 @@ describe('requestLoggingMiddleware', () => {
     response.emitFinish();
 
     expect(next).toHaveBeenCalledTimes(1);
-    expect(log).toHaveBeenCalledWith('GET /health 200 0ms requestId=req-ok');
+    expect(log).toHaveBeenCalledWith('GET /health 200 7ms requestId=req-ok');
   });
 
   it('warns on client errors so a 404 still has a log line', () => {
+    freezeClock();
+
     const request = {
       method: 'GET',
       originalUrl: '/missing',
@@ -85,10 +93,12 @@ describe('requestLoggingMiddleware', () => {
     response.statusCode = 404;
     response.emitFinish();
 
-    expect(warn).toHaveBeenCalledWith('GET /missing 404 0ms requestId=req-404');
+    expect(warn).toHaveBeenCalledWith('GET /missing 404 7ms requestId=req-404');
   });
 
   it('errors on server failures', () => {
+    freezeClock();
+
     const request = {
       method: 'GET',
       originalUrl: '/health',
@@ -102,6 +112,6 @@ describe('requestLoggingMiddleware', () => {
     response.statusCode = 500;
     response.emitFinish();
 
-    expect(error).toHaveBeenCalledWith('GET /health 500 0ms requestId=req-500');
+    expect(error).toHaveBeenCalledWith('GET /health 500 7ms requestId=req-500');
   });
 });
