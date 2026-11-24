@@ -28,4 +28,16 @@ export class AppConfigService {
   get nodeEnv(): NodeEnv {
     return this.config.get('NODE_ENV', { infer: true });
   }
+
+  get databaseUrl(): string {
+    return this.config.get('DATABASE_URL', { infer: true });
+  }
+
+  get jwtSecret(): string {
+    return this.config.get('JWT_SECRET', { infer: true });
+  }
+
+  get jwtExpiresIn(): string {
+    return this.config.get('JWT_EXPIRES_IN', { infer: true });
+  }
 }

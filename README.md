@@ -8,9 +8,9 @@ Built as a **bounded service under delivery discipline**: clear ownership bounda
 
 ## Current status
 
-**Platform foundation** — the operability layer every later feature depends on: validated config, strict request validation, OpenAPI, a stable error contract, correlated request logging, and an honest liveness check. Delivery standards (hooks, CI, protected `main`/`develop`) are already enforced.
+**Identity** — `POST /auth/register` and `POST /auth/login` issue JWTs; passwords are bcrypt-hashed; Prisma/SQLite persists users. Platform foundation (config, validation, OpenAPI, errors, logging, liveness) remains in place. Pricing and contracts CRUD are next.
 
-Domain work (auth, repayment policy, contracts CRUD) lands as small PRs into `develop`, each with unit and e2e coverage.
+Delivery standards (hooks, CI, protected `main`/`develop`, semantic-release) are enforced.
 
 ## Platform decisions
 
@@ -39,6 +39,8 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for workflow, commit rules, and PR expe
 | Concern       | Tool                                            |
 | ------------- | ----------------------------------------------- |
 | Framework     | NestJS + TypeScript (Node 22+)                  |
+| Persistence   | Prisma + SQLite (local); schema Postgres-ready  |
+| Auth          | bcrypt + JWT Bearer                             |
 | Lint / format | ESLint + Prettier                               |
 | Git hooks     | Husky (`pre-commit`, `commit-msg`, `pre-push`)  |
 | Staged checks | lint-staged                                     |
@@ -50,7 +52,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for workflow, commit rules, and PR expe
 npm run validate   # typecheck + lint + format + unit/e2e + build
 ```
 
-Unit tests enforce **≥ 90%** coverage (statements, branches, functions, lines). Nest bootstrap/module wiring is excluded from that unit gate and covered by e2e.
+Unit tests enforce **≥ 90%** coverage (statements, branches, functions, lines). Nest bootstrap/module/controller/DTO wiring is excluded from that unit gate; e2e covers the HTTP surface.
 
 ## Goals
 
@@ -97,11 +99,13 @@ Money is handled in **integer cents** at the domain boundary. Option snapshots a
 ```bash
 npm install
 cp .env.example .env
+npx prisma migrate deploy
 npm run start:dev
 ```
 
 - API: `http://localhost:3000`
 - Health: `GET http://localhost:3000/health`
+- Docs: `http://localhost:3000/api/docs`
 
 ```bash
 npm test
@@ -110,25 +114,25 @@ npm run lint
 npm run validate
 ```
 
-## Planned API surface
+## API surface
 
-| Method   | Path             | Auth | Purpose                        |
-| -------- | ---------------- | ---- | ------------------------------ |
-| `POST`   | `/auth/register` | —    | Create account                 |
-| `POST`   | `/auth/login`    | —    | Issue JWT                      |
-| `POST`   | `/contracts`     | JWT  | Create contract + term options |
-| `GET`    | `/contracts`     | JWT  | List own contracts             |
-| `GET`    | `/contracts/:id` | JWT  | Get one (ownership enforced)   |
-| `PATCH`  | `/contracts/:id` | JWT  | Update amount → recalc         |
-| `DELETE` | `/contracts/:id` | JWT  | Delete                         |
-| `GET`    | `/health`        | —    | Liveness                       |
-| `GET`    | `/api/docs`      | —    | Swagger UI                     |
+| Method   | Path             | Auth | Status  | Purpose                        |
+| -------- | ---------------- | ---- | ------- | ------------------------------ |
+| `POST`   | `/auth/register` | —    | Live    | Create account                 |
+| `POST`   | `/auth/login`    | —    | Live    | Issue JWT                      |
+| `POST`   | `/contracts`     | JWT  | Planned | Create contract + term options |
+| `GET`    | `/contracts`     | JWT  | Planned | List own contracts             |
+| `GET`    | `/contracts/:id` | JWT  | Planned | Get one (ownership enforced)   |
+| `PATCH`  | `/contracts/:id` | JWT  | Planned | Update amount → recalc         |
+| `DELETE` | `/contracts/:id` | JWT  | Planned | Delete                         |
+| `GET`    | `/health`        | —    | Live    | Liveness                       |
+| `GET`    | `/api/docs`      | —    | Live    | Swagger UI                     |
 
 ## Delivery plan
 
 1. **Engineering template** — hooks, CI, branches, docs
-2. **Platform** — config, validation, Swagger, errors, logging _(this)_
-3. **Identity** — register/login, bcrypt, JWT guard
+2. **Platform** — config, validation, Swagger, errors, logging
+3. **Identity** — register/login, bcrypt, JWT guard _(this)_
 4. **Pricing** — pure `RepaymentPolicy` + golden unit tests
 5. **Contracts** — CRUD + ownership + option snapshots
 6. **Hardening** — negative paths, IDOR checks
