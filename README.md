@@ -1,12 +1,14 @@
 # Contract Repayment API
 
-Backend for device repayment quotes: you register, send a principal in **integer cents**, and get **12 / 24 / 36-month** options at **6.5%**. Contracts are owned by the authenticated user (JWT). Optional Vite UI lives in [`web/`](./web) and runs separately from the API.
+Backend for device repayment quotes: you register, send a principal in **integer cents**, and get **12 / 24 / 36-month** options at **6.5%**. Contracts are owned by the authenticated user (JWT).
 
-Released on [`main`](https://github.com/Tlhogi007/contract-repayment-api) as **[v1.5.0](https://github.com/Tlhogi007/contract-repayment-api/releases/tag/v1.5.0)**. Needs Node **22+**; no Postgres install for a local run.
+The Vite UI lives in a **separate repo**: [`contract-repayment-web`](https://github.com/Tlhogi007/contract-repayment-web) (own CI, Render static site, and deploys).
+
+Released on [`main`](https://github.com/Tlhogi007/contract-repayment) as **[v1.5.0](https://github.com/Tlhogi007/contract-repayment/releases/tag/v1.5.0)**. Needs Node **22+**; no Postgres install for a local run.
 
 |          | Local                              | Live (Render)                                            |
 | -------- | ---------------------------------- | -------------------------------------------------------- |
-| UI       | http://localhost:5173 (`web:dev`)  | — (static host next)                                     |
+| UI       | http://localhost:5173 (web repo)   | https://contract-repayment-web.onrender.com              |
 | API      | http://localhost:3000              | https://contract-repayment-api.onrender.com              |
 | Liveness | http://localhost:3000/health       | https://contract-repayment-api.onrender.com/health       |
 | Ready    | http://localhost:3000/health/ready | https://contract-repayment-api.onrender.com/health/ready |
@@ -21,17 +23,20 @@ Free Render sleeps when idle (first hit can take ~30–50s) — warm `/health` o
 
 ```bash
 npm install
-npm install --prefix web
 cp .env.example .env
 npx prisma migrate deploy
-npm run start:dev          # API on :3000
-npm run web:dev            # UI on :5173 (proxies API)
+npm run start:dev
+```
+
+UI (sibling repo):
+
+```bash
+git clone https://github.com/Tlhogi007/contract-repayment-web.git
+cd contract-repayment-web && npm install && npm run dev
 ```
 
 ```bash
-npm run validate   # typecheck, lint, format, unit + e2e, API build
-npm run web:test:cov
-npm run build:web
+npm run validate   # typecheck, lint, format, unit + e2e, build
 ```
 
 Unit coverage gate is **≥ 90%** (modules/controllers/DTOs stay out of the unit gate; e2e covers HTTP).
@@ -297,28 +302,29 @@ SENTRY_DSN=https://…@….ingest.sentry.io/…
 | Deterministic 12/24/36 @ 6.5%             | Mobile clients                    |
 | Validation, errors, logging, OpenAPI      | Distributed topology              |
 | Health, readiness, OTel + optional Sentry | Hard-coded Datadog/Azure SDKs     |
-| Unit + e2e per feature + thin Vite UI     | Redis throttle / managed Postgres |
+| Unit + e2e per feature                    | Redis throttle / managed Postgres |
 
 ---
 
 ## Deploy (live)
 
-Hosted on **[Render](https://render.com)** (Docker from `main`). URLs are in the table at the top. Reviewers still clone with Node only — no Docker required.
+API hosted on **[Render](https://render.com)** (Docker from this repo’s `main`). UI is a separate Render Static Site from [`contract-repayment-web`](https://github.com/Tlhogi007/contract-repayment-web). Same Render workspace; `CORS_ORIGINS` is wired to the UI URL. Reviewers still clone with Node only — no Docker required.
 
-**Required env on Render:** `NODE_ENV=production`, strong `JWT_SECRET`, `DATABASE_URL=file:/data/prod.db` (ephemeral on Free; add a disk or Postgres if you need persistence). See [`render.yaml`](./render.yaml) / [`Dockerfile`](./Dockerfile).
+**Required API env on Render:** `NODE_ENV=production`, strong `JWT_SECRET`, `DATABASE_URL=file:/data/prod.db` (add a disk or Postgres if you need persistence), plus `CORS_ORIGINS`. See [`render.yaml`](./render.yaml) / [`Dockerfile`](./Dockerfile).
 
 ---
 
 ## Tooling & branches
 
-| Concern     | Tool                                              |
-| ----------- | ------------------------------------------------- |
-| Runtime     | NestJS + TypeScript (Node 22+); Vite UI in `web/` |
-| Persistence | Prisma + SQLite locally                           |
-| Auth        | bcrypt + JWT Bearer                               |
-| Quality     | ESLint, Prettier, Husky, lint-staged, commitlint  |
-| Release     | semantic-release → GitHub Releases + CHANGELOG    |
-| CI          | GitHub Actions on `main` / `develop`              |
+| Concern     | Tool                                             |
+| ----------- | ------------------------------------------------ |
+| Runtime     | NestJS + TypeScript (Node 22+)                   |
+| UI          | Separate repo: `contract-repayment-web`          |
+| Persistence | Prisma + SQLite locally                          |
+| Auth        | bcrypt + JWT Bearer                              |
+| Quality     | ESLint, Prettier, Husky, lint-staged, commitlint |
+| Release     | semantic-release → GitHub Releases + CHANGELOG   |
+| CI          | GitHub Actions on `main` / `develop`             |
 
 `main` is releasable (semantic-release). `develop` is the default PR target. See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
@@ -337,8 +343,8 @@ Hosted on **[Render](https://render.com)** (Docker from `main`). URLs are in the
 9. Optimistic concurrency → **v1.3.0**
 10. Monitoring — readiness, OpenTelemetry (Prometheus + optional OTLP), optional Sentry → **v1.4.0**
 11. Deploy — Render + Docker → **v1.5.0** (live URL in README; reviewers stay on npm)
-12. Thin Vite UI in `web/` (separate from the API process)
-13. Still optional — Redis throttle store, managed Postgres; static UI host
+12. Vite UI extracted to [`contract-repayment-web`](https://github.com/Tlhogi007/contract-repayment-web)
+13. Still optional — Redis throttle store, managed Postgres
 
 PRs stay small and reviewable. Secrets stay out of git; rotate `JWT_SECRET` before anything shared. Pricing/platform invariants live in unit tests; auth and contract journeys live in e2e. When the “why” matters more than the diff, it lands in this README.
 

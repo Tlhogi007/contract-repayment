@@ -27,6 +27,8 @@ export interface AppEnv {
   OTEL_SERVICE_NAME: string;
   OTEL_EXPORTER_OTLP_ENDPOINT?: string;
   SENTRY_DSN?: string;
+  /** Comma-separated browser origins allowed to call the API (empty = CORS off). */
+  CORS_ORIGINS?: string;
 }
 
 export type ValidatedEnv = Record<string, unknown> & AppEnv;
@@ -76,6 +78,12 @@ export class EnvironmentVariables {
   @IsNotEmpty()
   @MaxLength(512)
   SENTRY_DSN?: string;
+
+  /** Comma-separated origins for a separately hosted UI, e.g. http://localhost:5173. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  CORS_ORIGINS?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>): ValidatedEnv {
@@ -103,5 +111,6 @@ export function validateEnv(config: Record<string, unknown>): ValidatedEnv {
     OTEL_SERVICE_NAME: validated.OTEL_SERVICE_NAME ?? 'contract-repayment-api',
     OTEL_EXPORTER_OTLP_ENDPOINT: validated.OTEL_EXPORTER_OTLP_ENDPOINT,
     SENTRY_DSN: validated.SENTRY_DSN,
+    CORS_ORIGINS: validated.CORS_ORIGINS?.trim() || undefined,
   };
 }

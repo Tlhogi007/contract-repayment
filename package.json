@@ -10,11 +10,6 @@
   },
   "scripts": {
     "build": "nest build",
-    "build:api": "nest build",
-    "build:web": "npm run build --prefix web",
-    "web:dev": "npm run dev --prefix web",
-    "web:test": "npm run test --prefix web",
-    "web:test:cov": "npm run test:cov --prefix web",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
@@ -107,11 +102,7 @@
     "typescript-eslint": "^8.20.0"
   },
   "lint-staged": {
-    "web/**/*.{ts,tsx,js,jsx}": [
-      "npm run lint --prefix web",
-      "prettier --write"
-    ],
-    "{src,apps,libs,test,scripts}/**/*.{ts,js}": [
+    "*.{ts,js}": [
       "eslint --fix --fix",
       "prettier --write"
     ],
