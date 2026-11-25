@@ -1,11 +1,12 @@
 # Contract Repayment API
 
-Backend for device repayment quotes: you register, send a principal in **integer cents**, and get **12 / 24 / 36-month** options at **6.5%**. Contracts are owned by the authenticated user (JWT).
+Backend for device repayment quotes: you register, send a principal in **integer cents**, and get **12 / 24 / 36-month** options at **6.5%**. Contracts are owned by the authenticated user (JWT). Optional Vite UI lives in [`web/`](./web) and runs separately from the API.
 
 Released on [`main`](https://github.com/Tlhogi007/contract-repayment-api) as **[v1.5.0](https://github.com/Tlhogi007/contract-repayment-api/releases/tag/v1.5.0)**. Needs Node **22+**; no Postgres install for a local run.
 
 |          | Local                              | Live (Render)                                            |
 | -------- | ---------------------------------- | -------------------------------------------------------- |
+| UI       | http://localhost:5173 (`web:dev`)  | — (static host next)                                     |
 | API      | http://localhost:3000              | https://contract-repayment-api.onrender.com              |
 | Liveness | http://localhost:3000/health       | https://contract-repayment-api.onrender.com/health       |
 | Ready    | http://localhost:3000/health/ready | https://contract-repayment-api.onrender.com/health/ready |
@@ -20,13 +21,17 @@ Free Render sleeps when idle (first hit can take ~30–50s) — warm `/health` o
 
 ```bash
 npm install
+npm install --prefix web
 cp .env.example .env
 npx prisma migrate deploy
-npm run start:dev
+npm run start:dev          # API on :3000
+npm run web:dev            # UI on :5173 (proxies API)
 ```
 
 ```bash
-npm run validate   # typecheck, lint, format, unit + e2e, build
+npm run validate   # typecheck, lint, format, unit + e2e, API build
+npm run web:test:cov
+npm run build:web
 ```
 
 Unit coverage gate is **≥ 90%** (modules/controllers/DTOs stay out of the unit gate; e2e covers HTTP).
@@ -285,14 +290,14 @@ SENTRY_DSN=https://…@….ingest.sentry.io/…
 
 ## Scope
 
-| In                                        | Out (v1)                      |
-| ----------------------------------------- | ----------------------------- |
-| Register / login (JWT)                    | Payment gateway               |
-| Owner-scoped contract CRUD                | Multi-tenant orgs / admin     |
-| Deterministic 12/24/36 @ 6.5%             | Mobile clients                |
-| Validation, errors, logging, OpenAPI      | Distributed topology          |
-| Health, readiness, OTel + optional Sentry | Hard-coded Datadog/Azure SDKs |
-| Unit + e2e per feature                    | Thin UI (optional stretch)    |
+| In                                        | Out (v1)                          |
+| ----------------------------------------- | --------------------------------- |
+| Register / login (JWT)                    | Payment gateway                   |
+| Owner-scoped contract CRUD                | Multi-tenant orgs / admin         |
+| Deterministic 12/24/36 @ 6.5%             | Mobile clients                    |
+| Validation, errors, logging, OpenAPI      | Distributed topology              |
+| Health, readiness, OTel + optional Sentry | Hard-coded Datadog/Azure SDKs     |
+| Unit + e2e per feature + thin Vite UI     | Redis throttle / managed Postgres |
 
 ---
 
@@ -306,14 +311,14 @@ Hosted on **[Render](https://render.com)** (Docker from `main`). URLs are in the
 
 ## Tooling & branches
 
-| Concern     | Tool                                             |
-| ----------- | ------------------------------------------------ |
-| Runtime     | NestJS + TypeScript (Node 22+)                   |
-| Persistence | Prisma + SQLite locally                          |
-| Auth        | bcrypt + JWT Bearer                              |
-| Quality     | ESLint, Prettier, Husky, lint-staged, commitlint |
-| Release     | semantic-release → GitHub Releases + CHANGELOG   |
-| CI          | GitHub Actions on `main` / `develop`             |
+| Concern     | Tool                                              |
+| ----------- | ------------------------------------------------- |
+| Runtime     | NestJS + TypeScript (Node 22+); Vite UI in `web/` |
+| Persistence | Prisma + SQLite locally                           |
+| Auth        | bcrypt + JWT Bearer                               |
+| Quality     | ESLint, Prettier, Husky, lint-staged, commitlint  |
+| Release     | semantic-release → GitHub Releases + CHANGELOG    |
+| CI          | GitHub Actions on `main` / `develop`              |
 
 `main` is releasable (semantic-release). `develop` is the default PR target. See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
@@ -332,7 +337,8 @@ Hosted on **[Render](https://render.com)** (Docker from `main`). URLs are in the
 9. Optimistic concurrency → **v1.3.0**
 10. Monitoring — readiness, OpenTelemetry (Prometheus + optional OTLP), optional Sentry → **v1.4.0**
 11. Deploy — Render + Docker → **v1.5.0** (live URL in README; reviewers stay on npm)
-12. Still optional — thin UI, Redis throttle store, managed Postgres
+12. Thin Vite UI in `web/` (separate from the API process)
+13. Still optional — Redis throttle store, managed Postgres; static UI host
 
 PRs stay small and reviewable. Secrets stay out of git; rotate `JWT_SECRET` before anything shared. Pricing/platform invariants live in unit tests; auth and contract journeys live in e2e. When the “why” matters more than the diff, it lands in this README.
 
