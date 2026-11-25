@@ -4,8 +4,15 @@ Backend for device repayment quotes: you register, send a principal in **integer
 
 Released on [`main`](https://github.com/Tlhogi007/contract-repayment-api) as **[v1.5.0](https://github.com/Tlhogi007/contract-repayment-api/releases/tag/v1.5.0)**. Needs Node **22+**; no Postgres install for a local run.
 
-**Live:** [https://contract-repayment-api.onrender.com](https://contract-repayment-api.onrender.com) · [Swagger](https://contract-repayment-api.onrender.com/api/docs) · [ready](https://contract-repayment-api.onrender.com/health/ready)  
-(Free Render sleeps when idle — warm it once before a demo.)
+|          | Local                              | Live (Render)                                            |
+| -------- | ---------------------------------- | -------------------------------------------------------- |
+| API      | http://localhost:3000              | https://contract-repayment-api.onrender.com              |
+| Liveness | http://localhost:3000/health       | https://contract-repayment-api.onrender.com/health       |
+| Ready    | http://localhost:3000/health/ready | https://contract-repayment-api.onrender.com/health/ready |
+| Metrics  | http://localhost:3000/metrics      | https://contract-repayment-api.onrender.com/metrics      |
+| Swagger  | http://localhost:3000/api/docs     | https://contract-repayment-api.onrender.com/api/docs     |
+
+Free Render sleeps when idle (first hit can take ~30–50s) — warm `/health` once before a demo.
 
 ---
 
@@ -17,14 +24,6 @@ cp .env.example .env
 npx prisma migrate deploy
 npm run start:dev
 ```
-
-|          |                                    |
-| -------- | ---------------------------------- |
-| API      | http://localhost:3000              |
-| Liveness | http://localhost:3000/health       |
-| Ready    | http://localhost:3000/health/ready |
-| Metrics  | http://localhost:3000/metrics      |
-| Swagger  | http://localhost:3000/api/docs     |
 
 ```bash
 npm run validate   # typecheck, lint, format, unit + e2e, build
@@ -299,23 +298,7 @@ SENTRY_DSN=https://…@….ingest.sentry.io/…
 
 ## Deploy (live)
 
-Hosted on **[Render](https://render.com)** (Docker from `main`). Reviewers still clone with Node only — no Docker required.
-
-|          |                                                          |
-| -------- | -------------------------------------------------------- |
-| API      | https://contract-repayment-api.onrender.com              |
-| Liveness | https://contract-repayment-api.onrender.com/health       |
-| Ready    | https://contract-repayment-api.onrender.com/health/ready |
-| Metrics  | https://contract-repayment-api.onrender.com/metrics      |
-| Swagger  | https://contract-repayment-api.onrender.com/api/docs     |
-
-Free instances sleep when idle (first request can take ~30–50s). Hit `/health` once before a demo.
-
-Local assessment:
-
-```bash
-npm install && cp .env.example .env && npx prisma migrate deploy && npm run start:dev
-```
+Hosted on **[Render](https://render.com)** (Docker from `main`). URLs are in the table at the top. Reviewers still clone with Node only — no Docker required.
 
 **Required env on Render:** `NODE_ENV=production`, strong `JWT_SECRET`, `DATABASE_URL=file:/data/prod.db` (ephemeral on Free; add a disk or Postgres if you need persistence). See [`render.yaml`](./render.yaml) / [`Dockerfile`](./Dockerfile).
 
