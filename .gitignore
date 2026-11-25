@@ -33,3 +33,4 @@ temp/
 # Prisma
 prisma/*.db
 prisma/*.db-journal
+project-management/

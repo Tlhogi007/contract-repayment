@@ -23,7 +23,17 @@ describe('validateEnv', () => {
     expect(result.OTEL_SERVICE_NAME).toBe('contract-repayment-api');
     expect(result.OTEL_EXPORTER_OTLP_ENDPOINT).toBeUndefined();
     expect(result.SENTRY_DSN).toBeUndefined();
+    expect(result.CORS_ORIGINS).toBeUndefined();
     expect(result.EXTRA).toBe('kept');
+  });
+
+  it('trims CORS_ORIGINS and drops blank values', () => {
+    const result = validateEnv({
+      ...requiredEnvFixture,
+      CORS_ORIGINS: '  http://localhost:5173  ',
+    });
+
+    expect(result.CORS_ORIGINS).toBe('http://localhost:5173');
   });
 
   it('coerces a numeric port string', () => {
