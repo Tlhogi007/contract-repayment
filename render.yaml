@@ -1,4 +1,5 @@
-# Render Blueprint — API only. UI: https://github.com/Tlhogi007/contract-repayment-web
+# Legacy Render Blueprint (API now primary on Fly.io — see fly.toml).
+# UI: https://github.com/Tlhogi007/contract-repayment-web (Vercel).
 # Both services share one Render workspace; CORS_ORIGINS comes from the static site URL.
 services:
   - type: web
