@@ -46,13 +46,25 @@ If you use a Node version manager, `.nvmrc` pins `22` for convenience. It is not
 npm run validate
 ```
 
-That runs typecheck, lint, format check, unit + e2e tests, and build.
+That runs typecheck, lint, format check, unit + e2e tests, and the Nest build.
 
-Unit coverage must stay at **≥ 90%** statements/branches/functions/lines (`jest` `coverageThreshold`). Nest bootstrap/module wiring is excluded from that unit gate and is covered by e2e.
+For UI work also run:
+
+```bash
+npm run web:test:cov
+npm run build:web
+```
+
+Unit coverage must stay at **≥ 90%** statements/branches/functions/lines (`jest` `coverageThreshold` for the API; Vitest thresholds for `web/` helpers). Nest bootstrap/module wiring is excluded from that unit gate and is covered by e2e.
 
 ### CI (GitHub Actions)
 
-Every push/PR to `main` or `develop` runs lint, format, unit (coverage gate), e2e, and build on Node 22.
+| Workflow                               | When                   | Gates                                                 |
+| -------------------------------------- | ---------------------- | ----------------------------------------------------- |
+| `CI` (`.github/workflows/ci.yml`)      | Changes outside `web/` | Nest lint, format, unit (≥90%), e2e, build            |
+| `Web CI` (`.github/workflows/web.yml`) | Changes under `web/`   | oxlint, Vitest coverage (≥90% on helpers), Vite build |
+
+Pushes/PRs to `main` or `develop` run the matching workflow(s) on Node 22. A PR that only touches `web/` skips Nest CI; a PR that only touches the API skips Web CI.
 
 ## Commit messages
 

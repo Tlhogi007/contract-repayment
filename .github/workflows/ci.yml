@@ -3,8 +3,14 @@ name: CI
 on:
   push:
     branches: [main, develop]
+    paths-ignore:
+      - 'web/**'
+      - '.github/workflows/web.yml'
   pull_request:
     branches: [main, develop]
+    paths-ignore:
+      - 'web/**'
+      - '.github/workflows/web.yml'
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
