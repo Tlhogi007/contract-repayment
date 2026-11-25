@@ -305,12 +305,12 @@ SENTRY_DSN=https://…@….ingest.sentry.io/…
 
 Hosted on **[Render](https://render.com)** from `main` as **two services** (see [`render.yaml`](./render.yaml)):
 
-| Service                  | Runtime                               | Deploys when                 |
-| ------------------------ | ------------------------------------- | ---------------------------- |
-| `contract-repayment-api` | Docker ([`Dockerfile`](./Dockerfile)) | API / Prisma / image changes |
-| `contract-repayment-web` | Static site (`web/dist`)              | `web/` changes               |
+| Service                  | Runtime                               | Deploys when                                 |
+| ------------------------ | ------------------------------------- | -------------------------------------------- |
+| `contract-repayment-api` | Docker ([`Dockerfile`](./Dockerfile)) | Anything **except** `web/**` (`buildFilter`) |
+| `contract-repayment-web` | Static site (`web/dist`)              | **Only** `web/**` (`buildFilter`)            |
 
-The UI build bakes `VITE_API_BASE_URL` from the API’s public URL. The API allows that UI origin via `CORS_ORIGINS`. Reviewers still clone with Node only — no Docker required.
+UI-only pushes do not rebuild the API image; API-only pushes do not rebuild the static site. The UI build bakes `VITE_API_BASE_URL` from the API’s public URL. The API allows that UI origin via `CORS_ORIGINS`. Reviewers still clone with Node only — no Docker required.
 
 **Required API env on Render:** `NODE_ENV=production`, strong `JWT_SECRET`, `DATABASE_URL=file:/data/prod.db` (add a disk or Postgres if you need persistence), plus `CORS_ORIGINS` (wired by Blueprint). After the first Blueprint sync, confirm the static hostname in the table above.
 
