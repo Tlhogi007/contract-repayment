@@ -1,5 +1,5 @@
-# Render Blueprint — Docker web service + disk for SQLite.
-# Dashboard: New → Blueprint → this repo. Reviewers do not need Docker locally.
+# Render Blueprint — API only. UI: https://github.com/Tlhogi007/contract-repayment-web
+# Both services share one Render workspace; CORS_ORIGINS comes from the static site URL.
 services:
   - type: web
     name: contract-repayment-api
@@ -19,6 +19,11 @@ services:
         value: file:/data/prod.db
       - key: OTEL_SERVICE_NAME
         value: contract-repayment-api
+      - key: CORS_ORIGINS
+        fromService:
+          name: contract-repayment-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
     disk:
       name: api-data
       mountPath: /data

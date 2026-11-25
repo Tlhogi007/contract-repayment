@@ -10,6 +10,13 @@ export function configureApp(app: INestApplication): void {
   const appConfig = app.get(AppConfigService);
   const httpMetrics = app.get(HttpMetricsService);
 
+  if (appConfig.corsOrigins.length > 0) {
+    app.enableCors({
+      origin: appConfig.corsOrigins,
+      credentials: true,
+    });
+  }
+
   app.use(requestIdMiddleware);
   app.use(createRequestLoggingMiddleware(httpMetrics));
   app.useGlobalPipes(createValidationPipe());
