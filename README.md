@@ -2,20 +2,20 @@
 
 Backend for device repayment quotes: you register, send a principal in **integer cents**, and get **12 / 24 / 36-month** options at **6.5%**. Contracts are owned by the authenticated user (JWT).
 
-The Vite UI lives in a **separate repo**: [`contract-repayment-web`](https://github.com/Tlhogi007/contract-repayment-web) (own CI, Render static site, and deploys).
+The Vite UI lives in a **separate repo**: [`contract-repayment-web`](https://github.com/Tlhogi007/contract-repayment-web) (own CI, Vercel deploys).
 
 Released on [`main`](https://github.com/Tlhogi007/contract-repayment) as **[v1.5.0](https://github.com/Tlhogi007/contract-repayment/releases/tag/v1.5.0)**. Needs Node **22+**; no Postgres install for a local run.
 
-|          | Local                              | Live (Render)                                            |
-| -------- | ---------------------------------- | -------------------------------------------------------- |
-| UI       | http://localhost:5173 (web repo)   | https://contract-repayment-web.onrender.com              |
-| API      | http://localhost:3000              | https://contract-repayment-api.onrender.com              |
-| Liveness | http://localhost:3000/health       | https://contract-repayment-api.onrender.com/health       |
-| Ready    | http://localhost:3000/health/ready | https://contract-repayment-api.onrender.com/health/ready |
-| Metrics  | http://localhost:3000/metrics      | https://contract-repayment-api.onrender.com/metrics      |
-| Swagger  | http://localhost:3000/api/docs     | https://contract-repayment-api.onrender.com/api/docs     |
+|          | Local                              | Live (Fly + Vercel)                                 |
+| -------- | ---------------------------------- | --------------------------------------------------- |
+| UI       | http://localhost:5173 (web repo)   | https://contract-repayment-web.vercel.app           |
+| API      | http://localhost:3000              | https://contract-repayment-api.fly.dev              |
+| Liveness | http://localhost:3000/health       | https://contract-repayment-api.fly.dev/health       |
+| Ready    | http://localhost:3000/health/ready | https://contract-repayment-api.fly.dev/health/ready |
+| Metrics  | http://localhost:3000/metrics      | https://contract-repayment-api.fly.dev/metrics      |
+| Swagger  | http://localhost:3000/api/docs     | https://contract-repayment-api.fly.dev/api/docs     |
 
-Free Render sleeps when idle (first hit can take ~30–50s) — warm `/health` once before a demo.
+API is always-on on Fly (`min_machines_running = 1`). Set the UI’s `VITE_API_BASE_URL` to the Fly URL and `CORS_ORIGINS` on the API to the Vercel origin.
 
 ---
 
@@ -308,9 +308,19 @@ SENTRY_DSN=https://…@….ingest.sentry.io/…
 
 ## Deploy (live)
 
-API hosted on **[Render](https://render.com)** (Docker from this repo’s `main`). UI is a separate Render Static Site from [`contract-repayment-web`](https://github.com/Tlhogi007/contract-repayment-web). Same Render workspace; `CORS_ORIGINS` is wired to the UI URL. Reviewers still clone with Node only — no Docker required.
+API hosted on **[Fly.io](https://fly.io)** (Docker from this repo — see [`fly.toml`](./fly.toml) + [`Dockerfile`](./Dockerfile)). UI is on **Vercel** from [`contract-repayment-web`](https://github.com/Tlhogi007/contract-repayment-web). Reviewers still clone with Node only — no Docker required.
 
-**Required API env on Render:** `NODE_ENV=production`, strong `JWT_SECRET`, `DATABASE_URL=file:/data/prod.db` (add a disk or Postgres if you need persistence), plus `CORS_ORIGINS`. See [`render.yaml`](./render.yaml) / [`Dockerfile`](./Dockerfile).
+**Required API secrets / env on Fly:** `JWT_SECRET` (secret), `CORS_ORIGINS` (Vercel UI origin). Non-secret defaults live in `fly.toml`: `NODE_ENV=production`, `PORT=3000`, `DATABASE_URL=file:/data/prod.db`, SQLite on the `api_data` volume at `/data`.
+
+```bash
+fly auth login
+fly apps create contract-repayment-api   # once
+fly volumes create api_data --size 1 -a contract-repayment-api -r jnb
+fly secrets set JWT_SECRET='…' CORS_ORIGINS='https://contract-repayment-web.vercel.app'
+fly deploy
+```
+
+Legacy Render blueprint remains in [`render.yaml`](./render.yaml) for reference only.
 
 ---
 
