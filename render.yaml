@@ -1,4 +1,4 @@
-# Render Blueprint — Docker web service + disk for SQLite.
+# Render Blueprint — Docker API + Static Vite UI (independent deploys).
 # Dashboard: New → Blueprint → this repo. Reviewers do not need Docker locally.
 services:
   - type: web
@@ -19,7 +19,28 @@ services:
         value: file:/data/prod.db
       - key: OTEL_SERVICE_NAME
         value: contract-repayment-api
+      - key: CORS_ORIGINS
+        fromService:
+          name: contract-repayment-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
     disk:
       name: api-data
       mountPath: /data
       sizeGB: 1
+
+  - type: web
+    name: contract-repayment-web
+    runtime: static
+    buildCommand: npm ci --prefix web && npm run build --prefix web
+    staticPublishPath: web/dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          name: contract-repayment-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

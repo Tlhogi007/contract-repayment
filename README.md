@@ -4,14 +4,14 @@ Backend for device repayment quotes: you register, send a principal in **integer
 
 Released on [`main`](https://github.com/Tlhogi007/contract-repayment-api) as **[v1.5.0](https://github.com/Tlhogi007/contract-repayment-api/releases/tag/v1.5.0)**. Needs Node **22+**; no Postgres install for a local run.
 
-|          | Local                              | Live (Render)                                            |
-| -------- | ---------------------------------- | -------------------------------------------------------- |
-| UI       | http://localhost:5173 (`web:dev`)  | — (static host next)                                     |
-| API      | http://localhost:3000              | https://contract-repayment-api.onrender.com              |
-| Liveness | http://localhost:3000/health       | https://contract-repayment-api.onrender.com/health       |
-| Ready    | http://localhost:3000/health/ready | https://contract-repayment-api.onrender.com/health/ready |
-| Metrics  | http://localhost:3000/metrics      | https://contract-repayment-api.onrender.com/metrics      |
-| Swagger  | http://localhost:3000/api/docs     | https://contract-repayment-api.onrender.com/api/docs     |
+|          | Local                              | Live (Render)                                                      |
+| -------- | ---------------------------------- | ------------------------------------------------------------------ |
+| UI       | http://localhost:5173 (`web:dev`)  | https://contract-repayment-web.onrender.com (after Blueprint sync) |
+| API      | http://localhost:3000              | https://contract-repayment-api.onrender.com                        |
+| Liveness | http://localhost:3000/health       | https://contract-repayment-api.onrender.com/health                 |
+| Ready    | http://localhost:3000/health/ready | https://contract-repayment-api.onrender.com/health/ready           |
+| Metrics  | http://localhost:3000/metrics      | https://contract-repayment-api.onrender.com/metrics                |
+| Swagger  | http://localhost:3000/api/docs     | https://contract-repayment-api.onrender.com/api/docs               |
 
 Free Render sleeps when idle (first hit can take ~30–50s) — warm `/health` once before a demo.
 
@@ -303,9 +303,16 @@ SENTRY_DSN=https://…@….ingest.sentry.io/…
 
 ## Deploy (live)
 
-Hosted on **[Render](https://render.com)** (Docker from `main`). URLs are in the table at the top. Reviewers still clone with Node only — no Docker required.
+Hosted on **[Render](https://render.com)** from `main` as **two services** (see [`render.yaml`](./render.yaml)):
 
-**Required env on Render:** `NODE_ENV=production`, strong `JWT_SECRET`, `DATABASE_URL=file:/data/prod.db` (ephemeral on Free; add a disk or Postgres if you need persistence). See [`render.yaml`](./render.yaml) / [`Dockerfile`](./Dockerfile).
+| Service                  | Runtime                               | Deploys when                 |
+| ------------------------ | ------------------------------------- | ---------------------------- |
+| `contract-repayment-api` | Docker ([`Dockerfile`](./Dockerfile)) | API / Prisma / image changes |
+| `contract-repayment-web` | Static site (`web/dist`)              | `web/` changes               |
+
+The UI build bakes `VITE_API_BASE_URL` from the API’s public URL. The API allows that UI origin via `CORS_ORIGINS`. Reviewers still clone with Node only — no Docker required.
+
+**Required API env on Render:** `NODE_ENV=production`, strong `JWT_SECRET`, `DATABASE_URL=file:/data/prod.db` (add a disk or Postgres if you need persistence), plus `CORS_ORIGINS` (wired by Blueprint). After the first Blueprint sync, confirm the static hostname in the table above.
 
 ---
 
@@ -318,7 +325,7 @@ Hosted on **[Render](https://render.com)** (Docker from `main`). URLs are in the
 | Auth        | bcrypt + JWT Bearer                               |
 | Quality     | ESLint, Prettier, Husky, lint-staged, commitlint  |
 | Release     | semantic-release → GitHub Releases + CHANGELOG    |
-| CI          | GitHub Actions on `main` / `develop`              |
+| CI          | Nest + Web GitHub Actions (path-filtered)         |
 
 `main` is releasable (semantic-release). `develop` is the default PR target. See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
@@ -337,8 +344,9 @@ Hosted on **[Render](https://render.com)** (Docker from `main`). URLs are in the
 9. Optimistic concurrency → **v1.3.0**
 10. Monitoring — readiness, OpenTelemetry (Prometheus + optional OTLP), optional Sentry → **v1.4.0**
 11. Deploy — Render + Docker → **v1.5.0** (live URL in README; reviewers stay on npm)
-12. Thin Vite UI in `web/` (separate from the API process)
-13. Still optional — Redis throttle store, managed Postgres; static UI host
+12. Thin Vite UI in `web/` + Web CI
+13. Split Render deploy — Docker API + static UI (independent ship)
+14. Still optional — Redis throttle store, managed Postgres
 
 PRs stay small and reviewable. Secrets stay out of git; rotate `JWT_SECRET` before anything shared. Pricing/platform invariants live in unit tests; auth and contract journeys live in e2e. When the “why” matters more than the diff, it lands in this README.
 
