@@ -6,6 +6,11 @@ services:
     runtime: docker
     plan: starter
     healthCheckPath: /health/ready
+    # Skip API deploys when only the UI changes (and the reverse for web below).
+    buildFilter:
+      ignoredPaths:
+        - web/**
+        - project-management/**
     envVars:
       - key: NODE_ENV
         value: production
@@ -34,6 +39,9 @@ services:
     runtime: static
     buildCommand: npm ci --prefix web && npm run build --prefix web
     staticPublishPath: web/dist
+    buildFilter:
+      paths:
+        - web/**
     envVars:
       - key: VITE_API_BASE_URL
         fromService:
