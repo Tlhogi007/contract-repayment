@@ -45,4 +45,16 @@ export class AppConfigService {
   get sentryDsn(): string | undefined {
     return this.config.get('SENTRY_DSN', { infer: true });
   }
+
+  /** Parsed CORS allowlist; empty when unset (CORS stays off). */
+  get corsOrigins(): string[] {
+    const raw = this.config.get('CORS_ORIGINS', { infer: true });
+    if (!raw) {
+      return [];
+    }
+    return raw
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter((origin) => origin.length > 0);
+  }
 }
