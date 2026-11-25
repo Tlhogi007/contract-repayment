@@ -1,0 +1,30 @@
+# Optional local prod-like check. Reviewers still use npm run start:dev (no Docker).
+services:
+  api:
+    build: .
+    ports:
+      - '${PORT:-3000}:3000'
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-string-for-compose}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+      DATABASE_URL: file:/data/prod.db
+      OTEL_SERVICE_NAME: contract-repayment-api
+    volumes:
+      - api-data:/data
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  api-data:
