@@ -2,7 +2,7 @@
 
 Backend for device repayment quotes: you register, send a principal in **integer cents**, and get **12 / 24 / 36-month** options at **6.5%**. Contracts are owned by the authenticated user (JWT).
 
-Released on [`main`](https://github.com/Tlhogi007/contract-repayment-api) as **[v1.3.0](https://github.com/Tlhogi007/contract-repayment-api/releases/tag/v1.3.0)**. Needs Node **22+**; no Postgres install for a local run.
+Released on [`main`](https://github.com/Tlhogi007/contract-repayment-api) as **[v1.4.0](https://github.com/Tlhogi007/contract-repayment-api/releases/tag/v1.4.0)**. Needs Node **22+**; no Postgres install for a local run.
 
 ---
 
@@ -294,6 +294,36 @@ SENTRY_DSN=https://…@….ingest.sentry.io/…
 
 ---
 
+## Deploy (live)
+
+**First host: [Render](https://render.com)** via Docker + Blueprint. Reviewers still clone with Node only — no Docker required for assessment.
+
+```bash
+npm install && cp .env.example .env && npx prisma migrate deploy && npm run start:dev
+```
+
+**Required env on Render**
+
+| Variable       | Notes                                    |
+| -------------- | ---------------------------------------- |
+| `JWT_SECRET`   | Long random (Blueprint can generate one) |
+| `DATABASE_URL` | `file:/data/prod.db` on the mounted disk |
+| `NODE_ENV`     | `production`                             |
+| `PORT`         | `3000` (Render may also inject `PORT`)   |
+
+**Ship it**
+
+1. Merge deploy files to `main` (or connect the branch Render should build).
+2. [Render dashboard](https://dashboard.render.com) → **New → Blueprint** → this repo → apply [`render.yaml`](./render.yaml).
+3. Confirm disk mount `/data` and `JWT_SECRET`, deploy.
+4. Open `https://<service>.onrender.com/health/ready` and `/api/docs`.
+
+Optional local image check: `docker compose up --build` (not needed for reviewers).
+
+Later: point `DATABASE_URL` at managed Postgres; optional `OTEL_EXPORTER_OTLP_ENDPOINT` / `SENTRY_DSN`.
+
+---
+
 ## Tooling & branches
 
 | Concern     | Tool                                             |
@@ -320,8 +350,9 @@ SENTRY_DSN=https://…@….ingest.sentry.io/…
 7. Milestone — **v1.1.0**
 8. Scale posture — pagination + rate limits → **v1.2.0**
 9. Optimistic concurrency → **v1.3.0**
-10. Monitoring — readiness, OpenTelemetry (Prometheus + optional OTLP), optional Sentry
-11. Still optional — thin UI, Redis throttle store
+10. Monitoring — readiness, OpenTelemetry (Prometheus + optional OTLP), optional Sentry → **v1.4.0**
+11. Deploy — Render + Docker Blueprint (volume SQLite; reviewers stay on npm)
+12. Still optional — thin UI, Redis throttle store, managed Postgres
 
 PRs stay small and reviewable. Secrets stay out of git; rotate `JWT_SECRET` before anything shared. Pricing/platform invariants live in unit tests; auth and contract journeys live in e2e. When the “why” matters more than the diff, it lands in this README.
 
