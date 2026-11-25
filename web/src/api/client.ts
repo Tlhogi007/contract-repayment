@@ -8,6 +8,8 @@ import type {
 
 export { ApiError };
 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
+
 const TOKEN_KEY = 'cr_access_token';
 const EMAIL_KEY = 'cr_email';
 
@@ -59,7 +61,7 @@ async function api<T>(
     }
   }
 
-  const res = await fetch(path, { ...init, headers });
+  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
   if (res.status === 204) {
     return undefined as T;
   }
